@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -7,62 +8,65 @@ datasource db {
 }
 
 model User {
-  id String @id @default(cuid())
-  username String @unique
-  name String
-  email String @unique
-  password String
+  id                String   @id @default(cuid())
+  username          String   @unique
+  name              String
+  email             String   @unique
+  password          String
   profilePictureUrl String?
-  bio String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  posts Post[]
+  bio               String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  posts             Post[]
 }
 
 model Post {
-  id String @id @default(cuid())
-  slug String @unique
-  title String
-  content Json
-  authorId String
-  tags PostTag[]
-  published Boolean @default(false)
-  photos Photo[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author User @relation(fields: [authorId], references: [id])
-  @@index([authorId])  
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  title     String
+  content   Json
+  authorId  String
+  tags      PostTag[]
+  published Boolean   @default(false)
+  photos    Photo[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  author    User      @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
 }
 
 model Photo {
-  id String @id @default(cuid())
-  key String
-  alt String?
-  caption String?
-  postId String
-  position Int @default(0)
-  exifData Json?
+  id        String   @id @default(cuid())
+  key       String
+  alt       String?
+  caption   String?
+  postId    String
+  position  Int      @default(0)
+  exifData  Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@index([postId])
 }
 
 model Tag {
-  id String @id @default(cuid())
-  name String @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  posts PostTag[]
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  posts     PostTag[]
 }
 
 model PostTag {
-  id String @id @default(cuid())
-  postId String
-  tagId String
+  id        String   @id @default(cuid())
+  postId    String
+  tagId     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
   @@unique([postId, tagId])
 }

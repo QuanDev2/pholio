@@ -34,7 +34,7 @@ export default function usePostFilter(posts: Post[]) {
     () =>
       [...filteredPosts].sort((a, b) => {
         const diff =
-          new Date(a.createdOn).getTime() - new Date(b.createdOn).getTime()
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         return filters.sort === 'newest' ? -diff : diff
       }),
     [filteredPosts, filters.sort]

@@ -36,7 +36,7 @@ const PostCard = memo(function PostCard({ post }: Props) {
               {post.tags[0]}
             </span>
           )}
-          <span>{post.createdOn}</span>
+          <span>{post.createdAt}</span>
         </div>
       </div>
     </Link>

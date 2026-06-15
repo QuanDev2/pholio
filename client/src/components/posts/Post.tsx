@@ -23,8 +23,8 @@ export default function Post() {
         month: 'long',
         day: 'numeric',
         year: 'numeric'
-      }).format(new Date(post.createdOn))
-      return { ...post, createdOn: formattedDate }
+      }).format(new Date(post.createdAt))
+      return { ...post, createdAt: formattedDate }
     },
     staleTime: 60000
   })
@@ -73,7 +73,7 @@ export default function Post() {
           <div className='mt-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500'>
             <span>@{data.authorUsername}</span>
             <span>·</span>
-            <span>{data.createdOn}</span>
+            <span>{data.createdAt}</span>
             {data.tags.map((tag) => (
               <span
                 key={tag}

@@ -26,8 +26,8 @@ export default function Portfolio() {
             month: 'long',
             day: 'numeric',
             year: 'numeric'
-          }).format(new Date(post.createdOn))
-          return { ...post, createdOn: formattedDate }
+          }).format(new Date(post.createdAt))
+          return { ...post, createdAt: formattedDate }
         })
     },
     staleTime: 60000

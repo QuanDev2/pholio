@@ -36,5 +36,5 @@ export interface Post {
   published: boolean
   coverPhotoId: string
   photos: Photo[]
-  createdOn: string
+  createdAt: string
 }

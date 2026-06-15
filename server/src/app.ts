@@ -2,8 +2,11 @@ import express from 'express'
 import postsRouter from './routes/posts'
 import usersRouter from './routes/users'
 import { errorHandler } from './middleware/errorHandler'
+import cors from 'cors'
 
 const app = express()
+
+app.use(cors({ origin: 'http://localhost:5173' }))
 
 // 1. Station: parse JSON bodies for everyone (fills req.body).
 app.use(express.json())

@@ -32,8 +32,10 @@ export default function PostFeed() {
     queryKey: ['posts'],
     queryFn: ({ pageParam }) =>
       fetch(
-        `http://localhost:3001/posts?_page=${pageParam}&_per_page=${PAGE_LIMIT}`
-      ).then((r) => r.json()),
+        `http://localhost:4000/posts?page=${pageParam}&limit=${PAGE_LIMIT}`
+      ).then((r) => {
+        return r.json()
+      }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       return lastPage.next ?? undefined
@@ -45,6 +47,7 @@ export default function PostFeed() {
         pages: infiniteData.pages.map((page) => ({
           ...page,
           data: page.data.map((post: Post) => {
+            console.log(post)
             const formattedDate = new Intl.DateTimeFormat('en', {
               month: 'long',
               day: 'numeric',

@@ -12,14 +12,14 @@ const router = Router()
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    // console.log(req.query)
-    // { page: '1', limit: '12' }
     const page = Number(req.query.page) || 1
     const limit = Number(req.query.limit) || 10
+    const where = { published: true }
     const [posts, total] = await prisma.$transaction([
       prisma.post.findMany({
         skip: (page - 1) * limit,
         take: limit,
+        where: where,
         orderBy: { createdAt: 'desc' },
         include: {
           photos: { orderBy: { position: 'asc' } },
@@ -27,7 +27,7 @@ router.get(
           tags: true
         }
       }),
-      prisma.post.count()
+      prisma.post.count({ where: where })
     ])
 
     return res.json({ data: posts.map(serializePost), total, page, limit })

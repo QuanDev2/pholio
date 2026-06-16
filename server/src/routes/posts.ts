@@ -23,13 +23,18 @@ router.get(
         include: {
           photos: { orderBy: { position: 'asc' } },
           author: true,
-          tags: { include: { tag: true } }
+          tags: true
         }
       }),
       prisma.post.count()
     ])
 
-    return res.json({ data: posts, total, page, limit })
+    const processedPosts = posts.map((post) => ({
+      ...post,
+      tags: post.tags.map((tag) => tag.name)
+    }))
+
+    return res.json({ data: processedPosts, total, page, limit })
   })
 )
 

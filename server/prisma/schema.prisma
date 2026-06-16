@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -21,17 +21,17 @@ model User {
 }
 
 model Post {
-  id        String    @id @default(cuid())
-  slug      String    @unique
+  id        String   @id @default(cuid())
+  slug      String   @unique
   title     String
   content   Json
   authorId  String
-  tags      PostTag[]
-  published Boolean   @default(false)
+  tags      Tag[]
+  published Boolean  @default(false)
   photos    Photo[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  author    User      @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
 
   @@index([authorId])
 }
@@ -52,21 +52,9 @@ model Photo {
 }
 
 model Tag {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  posts     PostTag[]
-}
-
-model PostTag {
   id        String   @id @default(cuid())
-  postId    String
-  tagId     String
+  name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, tagId])
+  posts     Post[]
 }

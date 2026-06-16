@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Prisma generated client — regenerated via postinstall (`prisma generate`)
+server/src/generated/
+
 # Env files — never commit secrets
 .env
 .env.*

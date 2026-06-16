@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { asyncHandler } from '../middleware/asyncHandler'
 import { prisma } from '../lib/prisma'
+import { serializePost } from '../lib/serializers'
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
 const router = Router()
@@ -29,12 +30,7 @@ router.get(
       prisma.post.count()
     ])
 
-    const processedPosts = posts.map((post) => ({
-      ...post,
-      tags: post.tags.map((tag) => tag.name)
-    }))
-
-    return res.json({ data: processedPosts, total, page, limit })
+    return res.json({ data: posts.map(serializePost), total, page, limit })
   })
 )
 
@@ -52,7 +48,22 @@ router.get(
 router.get(
   '/:slug',
   asyncHandler(async (req, res) => {
-    res.json({ message: 'single post stub', slug: req.params.slug })
+    const slug = req.params.slug
+
+    const post = await prisma.post.findUnique({
+      where: { slug: slug },
+      include: {
+        photos: { orderBy: { position: 'asc' } },
+        author: true,
+        tags: true
+      }
+    })
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' })
+    }
+
+    res.json({ data: serializePost(post) })
   })
 )
 

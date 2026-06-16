@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { asyncHandler } from '../middleware/asyncHandler'
 import { prisma } from '../lib/prisma'
 import { serializePost } from '../lib/serializers'
+import slugify from 'slugify'
+import { nanoid } from 'nanoid'
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
 const router = Router()
@@ -71,8 +73,38 @@ router.get(
 
 router.post(
   '/',
-  asyncHandler(async (_req, res) => {
-    res.status(201).json({ message: 'create post stub' })
+  asyncHandler(async (req, res) => {
+    const { title, authorId } = req.body
+    const tags = req.body.tags ?? []
+
+    const base = slugify(title, { lower: true, strict: true })
+    const slug = `${base}-${nanoid(6)}`
+
+    const allowedTags = await prisma.tag.findMany({
+      where: {
+        id: { in: tags }
+      }
+    })
+
+    if (allowedTags.length !== tags.length) {
+      return res.status(400).json({ error: 'unknown tag' })
+    }
+
+    const post = await prisma.post.create({
+      data: {
+        title,
+        slug,
+        content: { type: 'doc', content: [] },
+        published: false,
+        author: { connect: { id: authorId } },
+        tags: {
+          connect: tags.map((id: string) => ({ id }))
+        }
+      },
+      include: { photos: true, author: true, tags: true }
+    })
+
+    res.status(201).json({ data: serializePost(post) })
   })
 )
 

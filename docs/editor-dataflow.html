@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Editor Dataflow — draft → upload → publish</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1a1a;
+        --muted: #555;
+        --bg: #ffffff;
+        --card: #f6f8fa;
+        --border: #d0d7de;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e6e6;
+          --muted: #9aa4af;
+          --bg: #0d1117;
+          --card: #161b22;
+          --border: #30363d;
+        }
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+          sans-serif;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+        color: var(--fg);
+        background: var(--bg);
+        line-height: 1.6;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin-bottom: 0.25rem;
+      }
+      .lede {
+        color: var(--muted);
+        margin-top: 0;
+      }
+      .weeks {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .diagram {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1.5rem 0;
+        overflow-x: auto;
+      }
+      ol {
+        padding-left: 1.25rem;
+      }
+      code {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.1em 0.35em;
+        font-size: 0.9em;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Editor Dataflow</h1>
+    <p class="lede">draft → upload → publish</p>
+    <p>
+      How a post and its photos get created. The key idea:
+      <strong
+        >the post row is created the moment the editor opens (an empty draft), before the
+        user writes anything</strong
+      >
+      — so every photo always has a <code>postId</code> to attach to
+      (<code>Photo.postId</code> is required).
+    </p>
+    <p class="weeks">
+      Built across three weeks: <strong>Week 3</strong> — draft create
+      (<code>POST /posts</code>) + autosave (<code>PATCH /posts/:id</code>) ·
+      <strong>Week 5</strong> — presigned S3 upload + photo registration ·
+      <strong>Week 6</strong> — background worker (resize + EXIF).
+    </p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    actor User
+    participant Editor as Editor (browser)
+    participant API as Express API
+    participant S3
+    participant Worker as Worker (Wk6)
+
+    Note over Editor,API: Week 3 — draft + autosave
+    User->>Editor: click "Create Post"
+    Editor->>API: POST /posts
+    API-->>Editor: { id }  (draft, published:false)
+    Note over Editor: redirect /editor/:id
+    User->>Editor: type text
+    Editor->>API: PATCH /posts/:id (autosave content)
+
+    Note over Editor,Worker: Week 5 + 6 — per photo, as dropped
+    User->>Editor: drop a photo
+    Editor->>API: POST /posts/:id/photos/presign
+    API-->>Editor: { url, key }
+    Editor->>S3: PUT file (bytes skip Express)
+    S3-->>Editor: 200
+    Editor->>API: POST /posts/:id/photos { key }
+    API-->>Editor: { photo } (status:pending)
+    API->>Worker: enqueue job
+    Worker->>Worker: resize + extract EXIF
+    Worker->>API: update photo (status:ready, size URLs)
+
+    Note over User,API: Week 3 — publish is just a flag flip
+    User->>Editor: click Publish
+    Editor->>API: PATCH /posts/:id (published:true)
+    Note right of API: validate 1+ photo
+    API-->>Editor: { post } — now on /explore
+      </pre>
+    </div>
+
+    <h2>Three things to remember</h2>
+    <ol>
+      <li>
+        <strong>The post row is born first.</strong> Everything else hangs off its
+        <code>id</code>. There's never a moment with photos-in-hand but no post.
+      </li>
+      <li>
+        <strong>File bytes bypass Express.</strong> The browser <code>PUT</code>s straight
+        to S3 via a presigned URL. Express only ever handles small JSON (the presign
+        request and the key registration).
+      </li>
+      <li>
+        <strong>Publish is trivial</strong> — one boolean. All the real data (content +
+        photos) was persisted incrementally during editing, so drafts "just work."
+      </li>
+    </ol>
+
+    <h2>Who does what</h2>
+    <ul>
+      <li>
+        <strong>Client (editor)</strong> orchestrates: presign → upload → register the
+        key. It <em>attaches</em> photos to the post, one at a time, as each finishes
+        uploading.
+      </li>
+      <li>
+        <strong>Worker</strong> only <em>processes</em> the image (resize, EXIF). It does
+        <strong>not</strong> attach photos to posts. Easy to conflate — keep them
+        separate.
+      </li>
+      <li>
+        A browser <strong>Service Worker</strong> is an unrelated thing — a client-side
+        network proxy. The background image processor here is just a server-side queue
+        consumer.
+      </li>
+    </ul>
+
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+    </script>
+  </body>
+</html>

@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { asyncHandler } from '../middleware/asyncHandler'
 import { prisma } from '../lib/prisma'
-import { serializePost } from '../lib/serializers'
+import { Prisma } from '../generated/prisma/client'
+import { serializePost, postInclude } from '../lib/serializers'
 import slugify from 'slugify'
 import { nanoid } from 'nanoid'
 
@@ -23,11 +24,7 @@ router.get(
         take: limit,
         where: where,
         orderBy: { createdAt: 'desc' },
-        include: {
-          photos: { orderBy: { position: 'asc' } },
-          author: true,
-          tags: true
-        }
+        include: postInclude
       }),
       prisma.post.count({ where: where })
     ])
@@ -54,11 +51,7 @@ router.get(
 
     const post = await prisma.post.findUnique({
       where: { slug: slug },
-      include: {
-        photos: { orderBy: { position: 'asc' } },
-        author: true,
-        tags: true
-      }
+      include: postInclude
     })
 
     if (!post) {
@@ -101,7 +94,7 @@ router.post(
           connect: tags.map((id: string) => ({ id }))
         }
       },
-      include: { photos: true, author: true, tags: true }
+      include: postInclude
     })
 
     res.status(201).json({ data: serializePost(post) })
@@ -111,7 +104,27 @@ router.post(
 router.patch(
   '/:id',
   asyncHandler(async (req, res) => {
-    res.json({ message: 'update post stub', id: req.params.id })
+    const id = req.params.id
+    const { title, content, published } = req.body
+
+    let post
+    try {
+      post = await prisma.post.update({
+        where: { id },
+        data: { title, content, published },
+        include: postInclude
+      })
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        return res.status(404).json({ error: 'post not found' })
+      }
+      throw err
+    }
+
+    res.status(200).json({ data: serializePost(post) })
   })
 )
 

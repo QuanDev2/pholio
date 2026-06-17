@@ -106,12 +106,33 @@ router.patch(
   asyncHandler(async (req, res) => {
     const id = req.params.id
     const { title, content, published } = req.body
+    const tags = req.body.tags
+    if (tags !== undefined) {
+      const allowedTags = await prisma.tag.findMany({
+        where: {
+          id: { in: tags }
+        }
+      })
+
+      if (allowedTags.length !== tags.length) {
+        return res.status(400).json({ error: 'unknown tag' })
+      }
+    }
 
     let post
+    const tagUpdate =
+      tags !== undefined
+        ? { set: tags.map((id: string) => ({ id })) }
+        : undefined
     try {
       post = await prisma.post.update({
         where: { id },
-        data: { title, content, published },
+        data: {
+          title,
+          content,
+          published,
+          tags: tagUpdate
+        },
         include: postInclude
       })
     } catch (err) {

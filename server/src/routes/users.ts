@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { asyncHandler } from '../middleware/asyncHandler'
 import { prisma } from '../lib/prisma'
-import { serializePost } from '../lib/serializers'
+import { serializePost, postInclude } from '../lib/serializers'
 
 // Mounted at /users in app.ts.
 const router = Router()
@@ -27,11 +27,7 @@ router.get(
         take: limit,
         where: postFilter,
         orderBy: { createdAt: 'desc' },
-        include: {
-          photos: { orderBy: { position: 'asc' } },
-          author: true,
-          tags: true
-        }
+        include: postInclude
       }),
       prisma.post.count({
         where: postFilter

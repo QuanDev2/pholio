@@ -1,3 +1,20 @@
+import { Prisma } from '../generated/prisma/client'
+
+// The relations every post-returning endpoint hydrates before serializing.
+// Pass as `include: postInclude` to findMany/findUnique/create/update so the
+// returned object always carries photos (position-ordered), author, and tags —
+// the exact shape serializePost expects.
+//
+// `satisfies` (not a plain `: Prisma.PostInclude` annotation) type-checks the
+// object while preserving its literal type, so Prisma can still infer the precise
+// return shape — without it, the relations would widen and serializePost would
+// lose its types.
+export const postInclude = {
+  photos: { orderBy: { position: 'asc' } },
+  author: true,
+  tags: true
+} satisfies Prisma.PostInclude
+
 // Shapes a Prisma post (with included relations) into the API response shape.
 // The only transform right now: flatten the `tags` join relation (Tag[]) down to
 // plain tag names (string[]), so the client never sees the join-table structure.

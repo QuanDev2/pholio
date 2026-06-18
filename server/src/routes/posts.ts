@@ -137,7 +137,20 @@ router.patch(
 router.delete(
   '/:id',
   asyncHandler(async (req, res) => {
-    res.json({ message: 'delete post stub', id: req.params.id })
+    try {
+      await prisma.post.delete({
+        where: { id: req.params.id }
+      })
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        return res.status(404).json({ error: 'post not found' })
+      }
+      throw err
+    }
+    res.status(204).send()
   })
 )
 

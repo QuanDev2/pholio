@@ -11,7 +11,15 @@ import { Prisma } from '../generated/prisma/client'
 // lose its types.
 export const postInclude = {
   photos: { orderBy: { position: 'asc' } },
-  author: true,
+  author: {
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      profilePictureUrl: true,
+      bio: true
+    }
+  },
   tags: true
 } satisfies Prisma.PostInclude
 

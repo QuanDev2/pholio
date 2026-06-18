@@ -3,6 +3,7 @@ import { asyncHandler } from '../middleware/asyncHandler'
 import { prisma } from '../lib/prisma'
 import { Prisma } from '../generated/prisma/client'
 import { serializePost, postInclude } from '../lib/serializers'
+import { assertTagsExist } from '../lib/tags'
 import slugify from 'slugify'
 import { nanoid } from 'nanoid'
 
@@ -73,15 +74,7 @@ router.post(
     const base = slugify(title, { lower: true, strict: true })
     const slug = `${base}-${nanoid(6)}`
 
-    const allowedTags = await prisma.tag.findMany({
-      where: {
-        id: { in: tags }
-      }
-    })
-
-    if (allowedTags.length !== tags.length) {
-      return res.status(400).json({ error: 'unknown tag' })
-    }
+    await assertTagsExist(tags)
 
     const post = await prisma.post.create({
       data: {
@@ -108,15 +101,7 @@ router.patch(
     const { title, content, published } = req.body
     const tags = req.body.tags
     if (tags !== undefined) {
-      const allowedTags = await prisma.tag.findMany({
-        where: {
-          id: { in: tags }
-        }
-      })
-
-      if (allowedTags.length !== tags.length) {
-        return res.status(400).json({ error: 'unknown tag' })
-      }
+      await assertTagsExist(tags)
     }
 
     let post

@@ -88,7 +88,7 @@ export default function Lightbox({
         <div className='relative flex items-center justify-center'>
           <img
             src={photo.url}
-            alt={photo.alt}
+            alt={photo.caption ?? ''}
             className='max-h-[65vh] w-full rounded-lg object-contain'
           />
 

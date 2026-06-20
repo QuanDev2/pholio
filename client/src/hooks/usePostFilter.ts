@@ -23,8 +23,7 @@ export default function usePostFilter(posts: Post[]) {
           filters.tag === 'All' || post.tags.includes(filters.tag)
         const matchesSearch =
           filters.search === '' ||
-          post.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-          post.bodyText.toLowerCase().includes(filters.search.toLowerCase())
+          post.title.toLowerCase().includes(filters.search.toLowerCase())
         return matchesTag && matchesSearch
       }),
     [posts, filters]

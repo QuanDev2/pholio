@@ -7,19 +7,20 @@ interface Props {
 }
 
 const PostCard = memo(function PostCard({ post }: Props) {
-  const coverPhoto =
-    post.photos.find((p) => p.id === post.coverPhotoId) ?? post.photos[0]
+  const coverPhoto = post.photos[0]
 
   return (
     <Link
       to={`/posts/${post.slug}`}
       className='relative overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md'
     >
-      <img
-        src={coverPhoto.url}
-        alt={coverPhoto.alt}
-        className='aspect-[4/3] w-full object-cover'
-      />
+      {coverPhoto && (
+        <img
+          src={coverPhoto.url}
+          alt={coverPhoto.caption ?? ''}
+          className='aspect-[4/3] w-full object-cover'
+        />
+      )}
       {!post.published && (
         <span className='absolute top-2 left-2 rounded-full bg-zinc-800 px-2.5 py-1 text-xs font-medium text-white'>
           Draft
@@ -29,7 +30,9 @@ const PostCard = memo(function PostCard({ post }: Props) {
         <div className='text-base font-semibold text-zinc-950'>
           {post.title}
         </div>
-        <p className='line-clamp-2 text-sm text-zinc-500'>{post.bodyText}</p>
+        <p className='line-clamp-2 text-sm text-zinc-500'>
+          Rich Text Coming soon
+        </p>
         <div className='flex flex-wrap items-center gap-2 text-xs text-zinc-500'>
           {post.tags[0] && (
             <span className='rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700'>

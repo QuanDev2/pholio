@@ -1,7 +1,7 @@
 export interface Photo {
   id: string
+  key: string // s3 key
   url: string
-  alt?: string
   caption?: string
   metaData?: PhotoMetaData
 }
@@ -26,15 +26,16 @@ export interface User {
   bio?: string
 }
 
+export type PostAuthor = Omit<User, 'email'>
+
 export interface Post {
   id: string
   slug: string
   title: string
-  bodyText: string
-  authorUsername: string
+  content: unknown
+  author: PostAuthor
   tags: string[]
   published: boolean
-  coverPhotoId: string
   photos: Photo[]
   createdAt: string
 }

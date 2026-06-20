@@ -15,8 +15,8 @@ export default function Post() {
   const { data, isLoading, isError } = useQuery<Post>({
     queryKey: ['posts', slug],
     queryFn: () =>
-      fetch(`http://localhost:3001/posts?slug=${slug}`).then((r) =>
-        (r.json() as Promise<Post[]>).then((posts: Post[]) => posts[0])
+      fetch(`http://localhost:4000/api/v1/posts/slug=${slug}`).then((r) =>
+        r.json().then((json) => json.data as Post)
       ),
     select: (post) => {
       const formattedDate = new Intl.DateTimeFormat('en', {
@@ -39,8 +39,7 @@ export default function Post() {
     )
   }
 
-  const coverPhoto =
-    data.photos.find((p) => p.id === data.coverPhotoId) ?? data.photos[0]
+  const coverPhoto = data.photos[0]
 
   const handlePhotoBtnOnClick = (
     photo: Photo,
@@ -61,17 +60,19 @@ export default function Post() {
           ← Back
         </button>
 
-        <img
-          src={coverPhoto.url}
-          alt={coverPhoto.alt}
-          className='w-full rounded-xl object-cover'
-        />
+        {coverPhoto && (
+          <img
+            src={coverPhoto.url}
+            alt={coverPhoto.caption ?? ''}
+            className='w-full rounded-xl object-cover'
+          />
+        )}
 
         <div className='mt-6'>
           <h1 className='text-2xl font-bold text-zinc-950'>{data.title}</h1>
 
           <div className='mt-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500'>
-            <span>@{data.authorUsername}</span>
+            <span>@{data.author.username}</span>
             <span>·</span>
             <span>{data.createdAt}</span>
             {data.tags.map((tag) => (
@@ -85,7 +86,7 @@ export default function Post() {
           </div>
 
           <p className='mt-6 text-base leading-relaxed text-zinc-700'>
-            {data.bodyText}
+            Rich Text Coming soon
           </p>
         </div>
 
@@ -98,7 +99,7 @@ export default function Post() {
               >
                 <img
                   src={photo.url}
-                  alt={photo.alt}
+                  alt={photo.caption ?? ''}
                   className='w-full rounded-lg object-cover'
                 />
               </button>

@@ -12,14 +12,15 @@ export default function Portfolio() {
   const { data, isLoading, isError } = useQuery<Post[]>({
     queryKey: ['posts', 'user', paramUsername],
     queryFn: () =>
-      fetch(`http://localhost:3001/posts?authorUsername=${paramUsername}`).then(
-        (r) => r.json() as Promise<Post[]>
-      ),
+      fetch(`http://localhost:4000/api/v1/users/${paramUsername}/posts`)
+        .then((r) => r.json())
+        .then((json) => json.data as Post[]),
     select: (posts) => {
       return posts
         .filter(
           (post) =>
-            post.authorUsername === paramUsername && (post.published || isOwner)
+            post.author.username === paramUsername &&
+            (post.published || isOwner)
         )
         .map((post) => {
           const formattedDate = new Intl.DateTimeFormat('en', {

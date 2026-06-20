@@ -32,7 +32,7 @@ export default function PostFeed() {
     queryKey: ['posts'],
     queryFn: ({ pageParam }) =>
       fetch(
-        `http://localhost:4000/posts?page=${pageParam}&limit=${PAGE_LIMIT}`
+        `http://localhost:4000/api/v1/posts?page=${pageParam}&limit=${PAGE_LIMIT}`
       ).then((r) => {
         return r.json()
       }),
@@ -42,6 +42,7 @@ export default function PostFeed() {
     },
     staleTime: 60000,
     select: (infiniteData: InfiniteData<PostsPageResponse>) => {
+      // { data: Post[], total, page, limit }
       return {
         ...infiniteData,
         pages: infiniteData.pages.map((page) => ({

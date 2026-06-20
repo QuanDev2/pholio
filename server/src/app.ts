@@ -1,8 +1,7 @@
 import express from 'express'
-import postsRouter from './routes/posts'
-import usersRouter from './routes/users'
 import { errorHandler } from './middleware/errorHandler'
 import cors from 'cors'
+import api from './routes'
 
 const app = express()
 
@@ -17,8 +16,7 @@ app.get('/health', (_req, res) => {
 })
 
 // 3. Resource desks: hand off by path prefix.
-app.use('/posts', postsRouter)
-app.use('/users', usersRouter)
+app.use('/api/v1', api)
 
 // 4. Error lane — registered LAST so any next(err) upstream lands here.
 app.use(errorHandler)

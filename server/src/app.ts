@@ -6,7 +6,7 @@ import cors from 'cors'
 
 const app = express()
 
-app.use(cors({ origin: 'http://localhost:5173' }))
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }))
 
 // 1. Station: parse JSON bodies for everyone (fills req.body).
 app.use(express.json())

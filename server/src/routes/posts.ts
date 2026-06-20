@@ -6,6 +6,8 @@ import { serializePost, postInclude } from '../lib/serializers'
 import { assertTagsExist } from '../lib/tags'
 import slugify from 'slugify'
 import { nanoid } from 'nanoid'
+import { validate } from '../middleware/validate'
+import { createPostSchema, updatePostSchema } from '../schemas/posts'
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
 const router = Router()
@@ -67,9 +69,9 @@ router.get(
 
 router.post(
   '/',
+  validate(createPostSchema),
   asyncHandler(async (req, res) => {
-    const { title, authorId } = req.body
-    const tags = req.body.tags ?? []
+    const { title, authorId, tags } = req.body
 
     const base = slugify(title, { lower: true, strict: true })
     const slug = `${base}-${nanoid(6)}`
@@ -96,6 +98,7 @@ router.post(
 
 router.patch(
   '/:id',
+  validate(updatePostSchema),
   asyncHandler(async (req, res) => {
     const id = req.params.id
     const { title, content, published } = req.body

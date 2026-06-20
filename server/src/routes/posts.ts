@@ -51,11 +51,19 @@ router.get(
   '/:slug',
   asyncHandler(async (req, res) => {
     const slug = req.params.slug
+    console.log('querying slug:', JSON.stringify(slug)) // 1. exact param, quotes reveal whitespace
+
+    const all = await prisma.post.findMany({ select: { slug: true } })
+    console.log(
+      'slugs in DB:',
+      all.map((p) => p.slug)
+    ) // 2. what THIS connection sees
 
     const post = await prisma.post.findUnique({
       where: { slug: slug },
       include: postInclude
     })
+    console.log(post)
 
     if (!post) {
       return res.status(404).json({ error: 'Post not found' })

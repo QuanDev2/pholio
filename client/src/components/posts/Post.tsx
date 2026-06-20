@@ -15,7 +15,7 @@ export default function Post() {
   const { data, isLoading, isError } = useQuery<Post>({
     queryKey: ['posts', slug],
     queryFn: () =>
-      fetch(`http://localhost:4000/api/v1/posts/slug=${slug}`).then((r) =>
+      fetch(`http://localhost:4000/api/v1/posts/${slug}`).then((r) =>
         r.json().then((json) => json.data as Post)
       ),
     select: (post) => {

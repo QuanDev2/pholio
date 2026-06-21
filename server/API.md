@@ -153,12 +153,23 @@ GOTCHAS worth a one-line callout when you hit them:
 
 <!-- One table: each error CAUSE → status → body. Pull the branches from
      errorHandler.ts (ZodError vs HttpError vs fallthrough) plus per-route 404s. -->
-     
- <!-- {"error":"Schema validation failed","details":[{"field":"title","message":"Invalid input: expected string, received undefined"}]} -->
 
 | Cause | Status | Body |
 | ----- | ------ | ---- |
-|       |        |      |
+| Request body fails Zod validation (missing/invalid field) | 400 | see *Validation error (400)* below |
+| Unknown tag | 400 | `{"error":"unknown tag"}` |
+| Resource not found | 404 | `{"error":"{Resource} not found"}` |
+| Unexpected/uncaught | 500 | `{"error": "Internal Server Error"}` |
+
+**Validation error (400):**
+```json
+{
+  "error": "Schema validation failed",
+  "details": [
+    { "field": "title", "message": "Invalid input: expected string, received undefined" }
+  ]
+}
+```
 
 ## Post reads
 

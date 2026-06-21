@@ -122,7 +122,7 @@ router.patch(
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        return res.status(404).json({ error: "post not found" });
+        return res.status(404).json({ error: "Post not found" });
       }
       throw err;
     }
@@ -140,7 +140,7 @@ router.delete(
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        return res.status(404).json({ error: "post not found" });
+        return res.status(404).json({ error: "Post not found" });
       }
       throw err;
     }

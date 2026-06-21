@@ -15,7 +15,7 @@ router.get(
     const author = await prisma.user.findUnique({ where: { username } });
 
     if (!author) {
-      return res.status(404).json({ error: "user not found" });
+      return res.status(404).json({ error: "User not found" });
     }
 
     const page = Number(req.query.page) || 1;

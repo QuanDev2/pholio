@@ -30,7 +30,7 @@ export default function Navbar() {
                   : 'text-sm font-medium text-zinc-500 hover:text-zinc-900'
               }
             >
-              Portfolio
+              My Portfolio
             </NavLink>
           )}
         </div>

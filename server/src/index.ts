@@ -1,7 +1,7 @@
-import app from './app'
+import app from "./app";
 
-const PORT = Number(process.env.PORT) || 4000
+const PORT = Number(process.env.PORT) || 4000;
 
 app.listen(PORT, () => {
-  console.log(`Pholio API listening on http://localhost:${PORT}`)
-})
+  console.log(`Pholio API listening on http://localhost:${PORT}`);
+});

@@ -1,31 +1,26 @@
-import { Routes, Route, Link, Navigate } from 'react-router-dom'
-import PostFeed from './components/posts/PostFeed'
-import {
-  CurrentUserProvider,
-  useCurrentUser
-} from './context/CurrentUserContext'
-import Post from './components/posts/Post'
-import Navbar from './component/Navbar'
-import Portfolio from './components/Portfolio'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Routes, Route, Link, Navigate } from "react-router-dom";
+import PostFeed from "./components/posts/PostFeed";
+import { CurrentUserProvider, useCurrentUser } from "./context/CurrentUserContext";
+import Post from "./components/posts/Post";
+import Navbar from "./component/Navbar";
+import Portfolio from "./components/Portfolio";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className='min-h-screen bg-zinc-50 text-zinc-950'>
+    <div className="min-h-screen bg-zinc-50 text-zinc-950">
       <Navbar></Navbar>
-      <main className='mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8'>
-        {children}
-      </main>
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">{children}</main>
     </div>
-  )
+  );
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useCurrentUser()
-  if (!user) return <Navigate to='/login' replace />
-  return <>{children}</>
+  const { user } = useCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
 }
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 function App() {
   return (
@@ -33,19 +28,17 @@ function App() {
       <CurrentUserProvider>
         <Routes>
           <Route
-            path='/'
+            path="/"
             element={
               <Layout>
-                <div className='flex flex-col items-center gap-6 py-12 text-center md:py-24'>
-                  <h1 className='text-2xl font-bold text-zinc-950 md:text-4xl'>
-                    pholio
-                  </h1>
-                  <p className='max-w-md text-zinc-500'>
+                <div className="flex flex-col items-center gap-6 py-12 text-center md:py-24">
+                  <h1 className="text-2xl font-bold text-zinc-950 md:text-4xl">pholio</h1>
+                  <p className="max-w-md text-zinc-500">
                     A home for photographers to share their work.
                   </p>
                   <Link
-                    to='/explore'
-                    className='rounded-md bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-600'
+                    to="/explore"
+                    className="rounded-md bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-600"
                   >
                     Explore Portfolios
                   </Link>
@@ -55,7 +48,7 @@ function App() {
           />
 
           <Route
-            path='/explore'
+            path="/explore"
             element={
               <Layout>
                 <PostFeed />
@@ -64,7 +57,7 @@ function App() {
           />
 
           <Route
-            path='/user/:username'
+            path="/user/:username"
             element={
               <Layout>
                 <Portfolio />
@@ -73,7 +66,7 @@ function App() {
           ></Route>
 
           <Route
-            path='/posts/:slug'
+            path="/posts/:slug"
             element={
               <Layout>
                 <Post />
@@ -81,7 +74,7 @@ function App() {
             }
           />
           <Route
-            path='/login'
+            path="/login"
             element={
               <Layout>
                 <div>Login (stub)</div>
@@ -89,7 +82,7 @@ function App() {
             }
           />
           <Route
-            path='/editor'
+            path="/editor"
             element={
               <ProtectedRoute>
                 <Layout>
@@ -99,7 +92,7 @@ function App() {
             }
           />
           <Route
-            path='/editor/:postId'
+            path="/editor/:postId"
             element={
               <ProtectedRoute>
                 <Layout>
@@ -111,7 +104,7 @@ function App() {
         </Routes>
       </CurrentUserProvider>
     </QueryClientProvider>
-  )
+  );
 }
 
-export default App
+export default App;

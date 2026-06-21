@@ -1,38 +1,32 @@
-import { createContext, useContext, useState } from 'react'
-import type { User } from '../types'
+import { createContext, useContext, useState } from "react";
+import type { User } from "../types";
 
 type CurrentUserContextValue = {
-  user: User | null
-  setUser: (user: User | null) => void
-}
+  user: User | null;
+  setUser: (user: User | null) => void;
+};
 
-const CurrentUserContext = createContext<CurrentUserContextValue | null>(null)
+const CurrentUserContext = createContext<CurrentUserContextValue | null>(null);
 
 const MOCK_USER: User = {
-  id: 'user-1',
-  username: 'quan',
-  name: 'quan',
-  email: 'contact@pholio.dev'
-}
+  id: "user-1",
+  username: "quan",
+  name: "quan",
+  email: "contact@pholio.dev",
+};
 
-export function CurrentUserProvider({
-  children
-}: {
-  children: React.ReactNode
-}) {
-  const [user, setUser] = useState<User | null>(MOCK_USER)
+export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(MOCK_USER);
 
   return (
-    <CurrentUserContext.Provider value={{ user, setUser }}>
-      {children}
-    </CurrentUserContext.Provider>
-  )
+    <CurrentUserContext.Provider value={{ user, setUser }}>{children}</CurrentUserContext.Provider>
+  );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- Provider + hook colocated; revisited in Week 4 useAuth refactor
 export function useCurrentUser() {
-  const ctx = useContext(CurrentUserContext)
-  if (!ctx)
-    throw new Error('useCurrentUser must be used inside CurrentUserProvider')
+  const ctx = useContext(CurrentUserContext);
+  if (!ctx) throw new Error("useCurrentUser must be used inside CurrentUserProvider");
 
-  return ctx
+  return ctx;
 }

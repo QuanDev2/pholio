@@ -32,11 +32,10 @@ response for every caller_. `GET /posts/mine` is per-user, so it can't share a c
 | GET    | `/posts/mine`                | (Week 4) | read-heavy · **not** cacheable | per-caller — varies by auth; stubbed public until Week 4      |
 | POST   | `/posts`                     | (Week 4) | write-heavy                    | creates a draft; invalidates feed caches                      |
 | PATCH  | `/posts/:id`                 | (Week 4) | write-heavy                    | invalidates that post + any feed it appears on                |
-| DELETE | `/posts/:id`                 | (Week 4) | write-heavy                    | cascade-deletes photos; invalidates post + feeds             |
+| DELETE | `/posts/:id`                 | (Week 4) | write-heavy                    | cascade-deletes photos; invalidates post + feeds              |
 | POST   | `/posts/:id/photos`          | (Week 4) | write-heavy                    | stub until Week 5 (S3 upload)                                 |
 | PATCH  | `/posts/:id/photos/:photoId` | (Week 4) | write-heavy                    | stub until Week 5                                             |
 | DELETE | `/posts/:id/photos/:photoId` | (Week 4) | write-heavy                    | stub until Week 5                                             |
-
 
 <!--
 WRITING DESIGN DOC
@@ -98,11 +97,11 @@ GOTCHAS worth a one-line callout when you hit them:
         "content": [
           {
             "text": "The city never sleeps.",
-            "type": "text"
-          }
-        ]
-      } // Tiptap rich-text JSON
-    ]
+            "type": "text",
+          },
+        ],
+      }, // Tiptap rich-text JSON
+    ],
   },
   "authorId": "clx...",
   "published": true,
@@ -119,20 +118,18 @@ GOTCHAS worth a one-line callout when you hit them:
       "exifData": null,
       "createdAt": "2026-06-16T00:38:46.936Z",
       "updatedAt": "2026-06-16T00:38:46.936Z",
-      "url": "https://picsum.photos/seed/clx.../800/600" // GENERATED, not stored — placeholder until Week 5 S3
-    }
+      "url": "https://picsum.photos/seed/clx.../800/600", // GENERATED, not stored — placeholder until Week 5 S3
+    },
   ],
   "author": {
     "id": "clx...",
     "username": "quan",
     "name": "Quan Nguyen",
     "profilePictureUrl": null,
-    "bio": "I'm a photographer and developer."
+    "bio": "I'm a photographer and developer.",
     // exclude email and password from the response
   },
-  "tags": [
-    "street"
-  ]
+  "tags": ["street"],
 }
 ```
 
@@ -154,20 +151,19 @@ GOTCHAS worth a one-line callout when you hit them:
 <!-- One table: each error CAUSE → status → body. Pull the branches from
      errorHandler.ts (ZodError vs HttpError vs fallthrough) plus per-route 404s. -->
 
-| Cause | Status | Body |
-| ----- | ------ | ---- |
-| Request body fails Zod validation (missing/invalid field) | 400 | see *Validation error (400)* below |
-| Unknown tag | 400 | `{"error":"unknown tag"}` |
-| Resource not found | 404 | `{"error":"{Resource} not found"}` |
-| Unexpected/uncaught | 500 | `{"error": "Internal Server Error"}` |
+| Cause                                                     | Status | Body                                 |
+| --------------------------------------------------------- | ------ | ------------------------------------ |
+| Request body fails Zod validation (missing/invalid field) | 400    | see _Validation error (400)_ below   |
+| Unknown tag                                               | 400    | `{"error":"unknown tag"}`            |
+| Resource not found                                        | 404    | `{"error":"{Resource} not found"}`   |
+| Unexpected/uncaught                                       | 500    | `{"error": "Internal Server Error"}` |
 
 **Validation error (400):**
+
 ```json
 {
   "error": "Schema validation failed",
-  "details": [
-    { "field": "title", "message": "Invalid input: expected string, received undefined" }
-  ]
+  "details": [{ "field": "title", "message": "Invalid input: expected string, received undefined" }]
 }
 ```
 
@@ -175,28 +171,96 @@ GOTCHAS worth a one-line callout when you hit them:
 
 ### `GET /posts`
 
-<!-- template: see formula above -->
+Retrieve all the published posts for the world feed
+
+- **Auth:** public
+- **Query params:** `page` (default 1), `limit` (default 10)
+- **2xx:** 200, list envelope of `Post[]`
+- **4xx:** none
 
 ### `GET /posts/mine`
 
+Retrieve all the posts for the logged in user
+
+- **Auth:** public stub today → authenticated (Week 4 Day 3, filtered by req.user.id)
+- **Query params:** `page` (default 1), `limit` (default 10)
+- **2xx:** 200 — currently a stub (`{ data: [], message }`); becomes a list envelope of Post[] (incl. drafts) in Week 4
+- **4xx:** none today; 401 (unauthenticated) once auth lands (Week 4)
+
 ### `GET /posts/:slug`
 
+Retrieve a single post by its slug, with photos (position-ordered), author, and tags.
+
+- **Auth:** public
+- **Path params:** `slug` — the post's URL slug
+- **2xx:** 200, `{ data: Post }`
+- **4xx:** 404 — see _Resource not found_
+
 ### `GET /users/:username/posts`
+
+Retrieve one user's published posts — the portfolio feed.
+
+- **Auth:** public
+- **Path params:** `username` — the portfolio owner
+- **Query params:** `page` (default 1), `limit` (default 10)
+- **2xx:** 200, list envelope of `Post[]` (that author, published only)
+- **4xx:** 404 — see _Resource not found_ (no such username)
 
 ## Post writes
 
 ### `POST /posts`
 
+Create a draft post (`published: false`). Slug is auto-generated (`slugify(title) + "-" + nanoid(6)`); `content` is seeded as an empty Tiptap doc; photos attach later (Week 5).
+
+- **Auth:** public stub today → authenticated (Week 4)
+- **Request body:** `createPostSchema`
+  - `title` — string, 1–200 chars, required
+  - `authorId` — string, required (becomes `req.user.id` in Week 4)
+  - `tags` — `string[]` of tag IDs, optional (defaults to `[]`)
+- **2xx:** 201, `{ data: Post }`
+- **4xx:** 400 (Zod) — see _Validation error_; 400 — see _Unknown tag_ row
+
 ### `PATCH /posts/:id`
+
+Update a post. All fields optional; omitting `tags` leaves the existing set untouched, while passing `tags` **replaces** it.
+
+- **Auth:** public stub today → authenticated + ownership check (Week 4 Day 6)
+- **Path params:** `id` — the post's id
+- **Request body:** `updatePostSchema` (all optional)
+  - `title` — string, 1–200 chars
+  - `content` — Tiptap rich-text JSON
+  - `published` — boolean
+  - `tags` — `string[]` of tag IDs (replaces the set)
+- **2xx:** 200, `{ data: Post }`
+- **4xx:** 400 (Zod) — see _Validation error_; 400 — see _Unknown tag_ row; 404 — see _Resource not found_
 
 ### `DELETE /posts/:id`
 
+Delete a post. Its photos cascade-delete at the DB level (S3 cleanup is Week 5).
+
+- **Auth:** public stub today → authenticated + ownership check (Week 4 Day 6)
+- **Path params:** `id` — the post's id
+- **2xx:** 204, empty body
+- **4xx:** 404 — see _Resource not found_
+
 ## Nested photo writes (stubs)
 
-<!-- All three are stubs until Week 5. One line each on the stub response. -->
+A photo is always addressed through its parent post (`Photo.postId` is required). Real S3-backed logic lands in Week 5; ownership (via the parent post's `authorId`) is enforced in Week 4 Day 6.
 
 ### `POST /posts/:id/photos`
 
+- **Auth:** (Week 4) → authenticated + ownership
+- **Path params:** `id` — parent post id
+- **2xx (stub):** 201, `{ "message": "add photo stub", "postId": "<id>" }`
+
 ### `PATCH /posts/:id/photos/:photoId`
 
+- **Auth:** (Week 4) → authenticated + ownership
+- **Path params:** `id` — parent post id; `photoId` — the photo
+- **2xx (stub):** 200, `{ "message": "update photo stub", "postId": "<id>", "photoId": "<photoId>" }`
+
 ### `DELETE /posts/:id/photos/:photoId`
+
+- **Auth:** (Week 4) → authenticated + ownership
+- **Path params:** `id` — parent post id; `photoId` — the photo
+- **2xx (stub):** 200, `{ "message": "delete photo stub", "postId": "<id>", "photoId": "<photoId>" }`

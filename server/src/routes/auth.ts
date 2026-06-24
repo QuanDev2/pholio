@@ -3,7 +3,7 @@ import { asyncHandler } from "../middleware/asyncHandler";
 import { loginSchema, registerSchema } from "../schemas/auth";
 import { validate } from "../middleware/validate";
 import { prisma } from "../lib/prisma";
-import { hash, compare } from "bcrypt";
+import bcrypt from "bcrypt";
 import { signAccessToken } from "../lib/jwt";
 
 const router = Router();
@@ -24,7 +24,7 @@ router.post(
       return res.status(409).json({ error: "Username already exists" });
     }
 
-    const hashedPassword = await hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
       data: { email, username, name, password: hashedPassword },
@@ -48,7 +48,7 @@ router.post(
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const match = await compare(password, user.password);
+    const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ error: "Invalid credentials" });
     }

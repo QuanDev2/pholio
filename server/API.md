@@ -156,6 +156,7 @@ GOTCHAS worth a one-line callout when you hit them:
 | Request body fails Zod validation (missing/invalid field) | 400    | see _Validation error (400)_ below   |
 | Unknown tag                                               | 400    | `{"error":"unknown tag"}`            |
 | Resource not found                                        | 404    | `{"error":"{Resource} not found"}`   |
+| Auth already exist                                        | 409    | `{"error":"{Auth field} already exists"}`   |
 | Unexpected/uncaught                                       | 500    | `{"error": "Internal Server Error"}` |
 
 **Validation error (400):**

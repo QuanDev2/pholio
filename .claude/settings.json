@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(fd -e prisma . prisma --type f)",
+      "Bash(rtk read *)",
+      "Bash(docker compose *)",
+      "Bash(fd 'prisma.config' . --type f)",
+      "Bash(fd 'seed' . --type f -E node_modules)",
+      "Bash(./node_modules/.bin/prisma migrate *)",
+      "Bash(./node_modules/.bin/prisma generate *)"
+    ],
+    "additionalDirectories": [
+      "/Users/quandev/.claude/commands"
     ]
   }
 }

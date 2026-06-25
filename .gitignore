@@ -34,3 +34,4 @@ server/src/generated/
 # Private career roadmap docs — never commit
 docs/roadmap/
 CLAUDE.md
+server/test.http

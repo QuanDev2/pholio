@@ -5,6 +5,7 @@ import { validate } from "../middleware/validate";
 import { prisma } from "../lib/prisma";
 import bcrypt from "bcrypt";
 import { signAccessToken } from "../lib/jwt";
+import { issueRefreshToken, setRefreshCookie } from "../lib/refreshToken";
 
 const router = Router();
 
@@ -33,6 +34,8 @@ router.post(
     const token = signAccessToken(user.id);
 
     const { password: _, ...safeUser } = user;
+    const refreshToken = await issueRefreshToken(user.id);
+    setRefreshCookie(res, refreshToken);
 
     return res.status(201).json({ data: safeUser, token });
   }),
@@ -55,6 +58,9 @@ router.post(
 
     const { password: _, ...safeUser } = user;
     const token = signAccessToken(user.id);
+    const refreshToken = await issueRefreshToken(user.id);
+
+    setRefreshCookie(res, refreshToken);
 
     return res.status(200).json({ data: safeUser, token });
   }),

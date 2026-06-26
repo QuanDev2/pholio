@@ -66,4 +66,53 @@ router.post(
   }),
 );
 
+router.post(
+  "/refresh",
+  asyncHandler(async (req, res) => {
+    const token = req.cookies.refreshToken; // populated by cookie-parser
+    if (!token) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const stored = await prisma.refreshToken.findUnique({ where: { token } });
+
+    // token is old, possibly a theft
+    if (!stored) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // if token is valid but already expired, delete it, force a re-login
+    if (stored.expiresAt < new Date()) {
+      await prisma.refreshToken.delete({ where: { token } });
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // rotating token: 1. delete the old; 2. Issue new + set rotated cookie; 3. mint a new access token; 4. send the new access token back
+    await prisma.refreshToken.delete({ where: { token } });
+
+    const newRefreshToken = await issueRefreshToken(stored.userId);
+    setRefreshCookie(res, newRefreshToken);
+
+    const accessToken = signAccessToken(stored.userId);
+
+    return res.status(200).json({ token: accessToken });
+  }),
+);
+
+router.post(
+  "/logout",
+  asyncHandler(async (req, res) => {
+    const token = req.cookies.refreshToken;
+    if (token) {
+      await prisma.refreshToken.deleteMany({ where: { token } });
+    }
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    return res.status(204).end();
+  }),
+);
+
 export default router;

@@ -8,6 +8,7 @@ import slugify from "slugify";
 import { nanoid } from "nanoid";
 import { validate } from "../middleware/validate";
 import { createPostSchema, updatePostSchema } from "../schemas/posts";
+import { authenticate } from "../middleware/authenticate";
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
 const router = Router();
@@ -38,11 +39,21 @@ router.get(
 
 // GET /posts/mine → caller's own posts incl. drafts.
 // MUST be registered before '/:slug', else 'mine' matches the :slug param.
-// Stubbed public for now; locked to the authenticated author in Week 4 Day 3.
 router.get(
   "/mine",
-  asyncHandler(async (_req, res) => {
-    res.json({ data: [], message: "my posts stub (auth lands Week 4)" });
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const posts = await prisma.post.findMany({
+      where: { authorId: req.user!.id },
+      include: postInclude,
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.status(200).json({
+      data: posts.map(serializePost),
+    });
   }),
 );
 
@@ -69,6 +80,7 @@ router.get(
 
 router.post(
   "/",
+  authenticate,
   validate(createPostSchema),
   asyncHandler(async (req, res) => {
     const { title, authorId, tags } = req.body;
@@ -98,6 +110,7 @@ router.post(
 
 router.patch(
   "/:id",
+  authenticate,
   validate(updatePostSchema),
   asyncHandler(async (req, res) => {
     const id = req.params.id;
@@ -133,6 +146,7 @@ router.patch(
 
 router.delete(
   "/:id",
+  authenticate,
   asyncHandler(async (req, res) => {
     try {
       await prisma.post.delete({
@@ -153,6 +167,7 @@ router.delete(
 
 router.post(
   "/:id/photos",
+  authenticate,
   asyncHandler(async (req, res) => {
     res.status(201).json({ message: "add photo stub", postId: req.params.id });
   }),
@@ -160,6 +175,7 @@ router.post(
 
 router.patch(
   "/:id/photos/:photoId",
+  authenticate,
   asyncHandler(async (req, res) => {
     res.json({
       message: "update photo stub",
@@ -171,6 +187,7 @@ router.patch(
 
 router.delete(
   "/:id/photos/:photoId",
+  authenticate,
   asyncHandler(async (req, res) => {
     res.json({
       message: "delete photo stub",

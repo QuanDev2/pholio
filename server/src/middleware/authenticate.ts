@@ -25,7 +25,5 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
       // tampered
       return res.status(401).json({ error: "Invalid credentials" });
     }
-    // anything else that slips past the two cases above
-    return res.status(401).json({ error: "Invalid credentials" });
   }
 }

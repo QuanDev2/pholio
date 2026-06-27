@@ -29,13 +29,13 @@ response for every caller_. `GET /posts/mine` is per-user, so it can't share a c
 | GET    | `/posts`                     | public   | read-heavy · cacheable         | explore feed (published only); short TTL so new posts surface |
 | GET    | `/posts/:slug`               | public   | read-heavy · cacheable         | single post; invalidate on its PATCH/DELETE                   |
 | GET    | `/users/:username/posts`     | public   | read-heavy · cacheable         | portfolio feed (one author, published only)                   |
-| GET    | `/posts/mine`                | (Week 4) | read-heavy · **not** cacheable | per-caller — varies by auth; stubbed public until Week 4      |
-| POST   | `/posts`                     | (Week 4) | write-heavy                    | creates a draft; invalidates feed caches                      |
-| PATCH  | `/posts/:id`                 | (Week 4) | write-heavy                    | invalidates that post + any feed it appears on                |
-| DELETE | `/posts/:id`                 | (Week 4) | write-heavy                    | cascade-deletes photos; invalidates post + feeds              |
-| POST   | `/posts/:id/photos`          | (Week 4) | write-heavy                    | stub until Week 5 (S3 upload)                                 |
-| PATCH  | `/posts/:id/photos/:photoId` | (Week 4) | write-heavy                    | stub until Week 5                                             |
-| DELETE | `/posts/:id/photos/:photoId` | (Week 4) | write-heavy                    | stub until Week 5                                             |
+| GET    | `/posts/mine`                | authenticated | read-heavy · **not** cacheable | per-caller — varies by auth; returns the caller's posts incl. drafts |
+| POST   | `/posts`                     | authenticated | write-heavy                    | creates a draft; invalidates feed caches                      |
+| PATCH  | `/posts/:id`                 | authenticated | write-heavy                    | invalidates that post + any feed it appears on (ownership: Day 6) |
+| DELETE | `/posts/:id`                 | authenticated | write-heavy                    | cascade-deletes photos; invalidates post + feeds (ownership: Day 6) |
+| POST   | `/posts/:id/photos`          | authenticated | write-heavy                    | stub until Week 5 (S3 upload); ownership: Day 6               |
+| PATCH  | `/posts/:id/photos/:photoId` | authenticated | write-heavy                    | stub until Week 5; ownership: Day 6                           |
+| DELETE | `/posts/:id/photos/:photoId` | authenticated | write-heavy                    | stub until Week 5; ownership: Day 6                           |
 
 <!--
 WRITING DESIGN DOC
@@ -183,10 +183,10 @@ Retrieve all the published posts for the world feed
 
 Retrieve all the posts for the logged in user
 
-- **Auth:** public stub today → authenticated (Week 4 Day 3, filtered by req.user.id)
+- **Auth:** authenticated; filtered by `req.user.id`
 - **Query params:** `page` (default 1), `limit` (default 10)
-- **2xx:** 200 — currently a stub (`{ data: [], message }`); becomes a list envelope of Post[] (incl. drafts) in Week 4
-- **4xx:** none today; 401 (unauthenticated) once auth lands (Week 4)
+- **2xx:** 200, list envelope of `Post[]` (the caller's posts, incl. drafts)
+- **4xx:** 401 if unauthenticated
 
 ### `GET /posts/:slug`
 
@@ -213,19 +213,19 @@ Retrieve one user's published posts — the portfolio feed.
 
 Create a draft post (`published: false`). Slug is auto-generated (`slugify(title) + "-" + nanoid(6)`); `content` is seeded as an empty Tiptap doc; photos attach later (Week 5).
 
-- **Auth:** public stub today → authenticated (Week 4)
+- **Auth:** authenticated
 - **Request body:** `createPostSchema`
   - `title` — string, 1–200 chars, required
   - `authorId` — string, required (becomes `req.user.id` in Week 4)
   - `tags` — `string[]` of tag IDs, optional (defaults to `[]`)
 - **2xx:** 201, `{ data: Post }`
-- **4xx:** 400 (Zod) — see _Validation error_; 400 — see _Unknown tag_ row
+- **4xx:** 401 (unauthenticated); 400 (Zod) — see _Validation error_; 400 — see _Unknown tag_ row
 
 ### `PATCH /posts/:id`
 
 Update a post. All fields optional; omitting `tags` leaves the existing set untouched, while passing `tags` **replaces** it.
 
-- **Auth:** public stub today → authenticated + ownership check (Week 4 Day 6)
+- **Auth:** authenticated (ownership check: Week 4 Day 6)
 - **Path params:** `id` — the post's id
 - **Request body:** `updatePostSchema` (all optional)
   - `title` — string, 1–200 chars
@@ -233,16 +233,16 @@ Update a post. All fields optional; omitting `tags` leaves the existing set unto
   - `published` — boolean
   - `tags` — `string[]` of tag IDs (replaces the set)
 - **2xx:** 200, `{ data: Post }`
-- **4xx:** 400 (Zod) — see _Validation error_; 400 — see _Unknown tag_ row; 404 — see _Resource not found_
+- **4xx:** 401 (unauthenticated); 400 (Zod) — see _Validation error_; 400 — see _Unknown tag_ row; 404 — see _Resource not found_
 
 ### `DELETE /posts/:id`
 
 Delete a post. Its photos cascade-delete at the DB level (S3 cleanup is Week 5).
 
-- **Auth:** public stub today → authenticated + ownership check (Week 4 Day 6)
+- **Auth:** authenticated (ownership check: Week 4 Day 6)
 - **Path params:** `id` — the post's id
 - **2xx:** 204, empty body
-- **4xx:** 404 — see _Resource not found_
+- **4xx:** 401 (unauthenticated); 404 — see _Resource not found_
 
 ## Nested photo writes (stubs)
 
@@ -250,18 +250,21 @@ A photo is always addressed through its parent post (`Photo.postId` is required)
 
 ### `POST /posts/:id/photos`
 
-- **Auth:** (Week 4) → authenticated + ownership
+- **Auth:** authenticated (ownership: Week 4 Day 6)
 - **Path params:** `id` — parent post id
 - **2xx (stub):** 201, `{ "message": "add photo stub", "postId": "<id>" }`
+- **4xx:** 401 (unauthenticated)
 
 ### `PATCH /posts/:id/photos/:photoId`
 
-- **Auth:** (Week 4) → authenticated + ownership
+- **Auth:** authenticated (ownership: Week 4 Day 6)
 - **Path params:** `id` — parent post id; `photoId` — the photo
 - **2xx (stub):** 200, `{ "message": "update photo stub", "postId": "<id>", "photoId": "<photoId>" }`
+- **4xx:** 401 (unauthenticated)
 
 ### `DELETE /posts/:id/photos/:photoId`
 
-- **Auth:** (Week 4) → authenticated + ownership
+- **Auth:** authenticated (ownership: Week 4 Day 6)
 - **Path params:** `id` — parent post id; `photoId` — the photo
 - **2xx (stub):** 200, `{ "message": "delete photo stub", "postId": "<id>", "photoId": "<photoId>" }`
+- **4xx:** 401 (unauthenticated)

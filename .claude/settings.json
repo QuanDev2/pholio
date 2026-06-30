@@ -8,7 +8,9 @@
       "Bash(fd 'prisma.config' . --type f)",
       "Bash(fd 'seed' . --type f -E node_modules)",
       "Bash(./node_modules/.bin/prisma migrate *)",
-      "Bash(./node_modules/.bin/prisma generate *)"
+      "Bash(./node_modules/.bin/prisma generate *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk find *)"
     ],
     "additionalDirectories": [
       "/Users/quandev/.claude/commands"

@@ -10,7 +10,8 @@
       "Bash(./node_modules/.bin/prisma migrate *)",
       "Bash(./node_modules/.bin/prisma generate *)",
       "Bash(rtk ls *)",
-      "Bash(rtk find *)"
+      "Bash(rtk find *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const p='node_modules/@types/react/index.d.ts';console.log\\(fs.readFileSync\\(p,'utf8'\\).includes\\('interface SubmitEvent'\\)||fs.readFileSync\\(p,'utf8'\\).match\\(/type SubmitEvent/\\)?'yes':'no React.SubmitEvent found'\\)\")"
     ],
     "additionalDirectories": [
       "/Users/quandev/.claude/commands"

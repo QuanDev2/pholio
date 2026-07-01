@@ -24,7 +24,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- Provider + hook colocated; revisited in Week 4 useAuth refactor
-export function useCurrentUser() {
+export function useCurrentUser(): CurrentUserContextValue {
   const ctx = useContext(CurrentUserContext);
   if (!ctx) throw new Error("useCurrentUser must be used inside CurrentUserProvider");
 

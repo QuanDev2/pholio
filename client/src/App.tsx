@@ -5,6 +5,7 @@ import Post from "./components/posts/Post";
 import Navbar from "./component/Navbar";
 import Portfolio from "./components/Portfolio";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Login from "./components/auth/Login";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -77,7 +78,7 @@ function App() {
             path="/login"
             element={
               <Layout>
-                <div>Login (stub)</div>
+                <Login />
               </Layout>
             }
           />

@@ -27,8 +27,18 @@ export default function Register() {
       setUser(user);
       navigate("/explore");
     } catch (err) {
+      console.log(err);
       const fallback = "Signing up failed";
-      setError(axios.isAxiosError(err) ? (err.response?.data?.error ?? fallback) : fallback);
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data;
+        const message =
+          data?.details?.[0]?.message ?? // first field-level validation message
+          data?.error ?? // top-level message (409, etc.)
+          fallback;
+        setError(message);
+      } else {
+        setError(fallback);
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -34,13 +34,25 @@ export default function Navbar() {
             </NavLink>
           )}
         </div>
-        {user && (
+        {user ? (
           <Link
             to="/editor"
             className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-600"
           >
             Create Post
           </Link>
+        ) : (
+          <div className="flex items-center gap-4">
+            <Link to="/login" className="text-sm font-medium text-zinc-500 hover:text-zinc-900">
+              Log in
+            </Link>
+            <Link
+              to="/register"
+              className="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-600"
+            >
+              Sign up
+            </Link>
+          </div>
         )}
       </nav>
     </div>

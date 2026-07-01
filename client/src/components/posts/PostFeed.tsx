@@ -42,7 +42,6 @@ export default function PostFeed() {
           pages: infiniteData.pages.map((page) => ({
             ...page,
             data: page.data.map((post: Post) => {
-              console.log(post);
               const formattedDate = new Intl.DateTimeFormat("en", {
                 month: "long",
                 day: "numeric",

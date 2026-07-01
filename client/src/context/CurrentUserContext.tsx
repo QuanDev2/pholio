@@ -16,7 +16,7 @@ const MOCK_USER: User = {
 };
 
 export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(MOCK_USER);
+  const [user, setUser] = useState<User | null>(null);
 
   return (
     <CurrentUserContext.Provider value={{ user, setUser }}>{children}</CurrentUserContext.Provider>

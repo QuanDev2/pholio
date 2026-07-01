@@ -3,17 +3,25 @@ import { login } from "../../lib/authApi";
 import { setAccessToken } from "../../lib/authToken";
 import { useCurrentUser } from "../../context/CurrentUserContext";
 import { useNavigate } from "react-router-dom";
+import { validateLogin, type LoginFieldErrors } from "../../lib/authValidation";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const { setUser } = useCurrentUser();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
+    setError("");
+
+    const errors = validateLogin({ email, password });
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return; // block the request when invalid
+
     setIsSubmitting(true);
     try {
       const { user, token } = await login({ email, password });
@@ -29,7 +37,7 @@ export default function Login() {
 
   return (
     <>
-      <form className="mx-auto flex max-w-sm flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="mx-auto flex max-w-sm flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <h1 className="text-xl font-bold text-zinc-950">Log in</h1>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -40,6 +48,7 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             className="rounded-md border border-zinc-300 px-3 py-2"
           />
+          {fieldErrors.email && <span className="text-xs text-red-600">{fieldErrors.email}</span>}
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -50,6 +59,9 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             className="rounded-md border border-zinc-300 px-3 py-2"
           />
+          {fieldErrors.password && (
+            <span className="text-xs text-red-600">{fieldErrors.password}</span>
+          )}
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button

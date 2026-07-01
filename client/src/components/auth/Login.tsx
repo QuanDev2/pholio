@@ -5,22 +5,32 @@ import { useCurrentUser } from "../../context/CurrentUserContext";
 import { useNavigate } from "react-router-dom";
 import { validateLogin, type LoginFieldErrors } from "../../lib/authValidation";
 
+type TouchedFields = Partial<Record<keyof LoginFieldErrors, boolean>>;
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
+  const [touched, setTouched] = useState<TouchedFields>({});
   const { setUser } = useCurrentUser();
   const navigate = useNavigate();
+
+  // Derived: recomputed every render from the current field values.
+  const fieldErrors = validateLogin({ email, password });
+
+  const markTouched = (field: keyof LoginFieldErrors) =>
+    setTouched((t) => ({ ...t, [field]: true }));
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setError("");
 
-    const errors = validateLogin({ email, password });
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return; // block the request when invalid
+    if (Object.keys(fieldErrors).length > 0) {
+      // reveal every field's error on a submit attempt
+      setTouched({ email: true, password: true });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -46,9 +56,12 @@ export default function Login() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => markTouched("email")}
             className="rounded-md border border-zinc-300 px-3 py-2"
           />
-          {fieldErrors.email && <span className="text-xs text-red-600">{fieldErrors.email}</span>}
+          {touched.email && fieldErrors.email && (
+            <span className="text-xs text-red-600">{fieldErrors.email}</span>
+          )}
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -57,9 +70,10 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => markTouched("password")}
             className="rounded-md border border-zinc-300 px-3 py-2"
           />
-          {fieldErrors.password && (
+          {touched.password && fieldErrors.password && (
             <span className="text-xs text-red-600">{fieldErrors.password}</span>
           )}
         </label>

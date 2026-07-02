@@ -8,6 +8,7 @@ type CurrentUserContextValue = {
   user: User | null;
   setUser: (user: User | null) => void;
   isLoading: boolean;
+  logout: () => Promise<void>;
 };
 
 const CurrentUserContext = createContext<CurrentUserContextValue | null>(null);
@@ -37,8 +38,18 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
     restoreUser();
   }, []);
 
+  async function logout() {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // even if the server call fails, clear local session below
+    }
+    setAccessToken(null);
+    setUser(null);
+  }
+
   return (
-    <CurrentUserContext.Provider value={{ user, setUser, isLoading }}>
+    <CurrentUserContext.Provider value={{ user, setUser, isLoading, logout }}>
       {children}
     </CurrentUserContext.Provider>
   );

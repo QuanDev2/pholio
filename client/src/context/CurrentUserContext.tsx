@@ -1,25 +1,46 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "../types";
+import axios from "axios";
+import { setAccessToken } from "../lib/authToken";
+import { api } from "../lib/apiClient";
 
 type CurrentUserContextValue = {
   user: User | null;
   setUser: (user: User | null) => void;
+  isLoading: boolean;
 };
 
 const CurrentUserContext = createContext<CurrentUserContextValue | null>(null);
 
-const MOCK_USER: User = {
-  id: "user-1",
-  username: "quan",
-  name: "quan",
-  email: "contact@pholio.dev",
-};
-
 export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function restoreUser() {
+      try {
+        const res = await axios.post(
+          "http://localhost:4000/api/v1/auth/refresh",
+          {},
+          { withCredentials: true },
+        );
+        setAccessToken(res.data.token);
+        const userRes = await api.get("/auth/me");
+        setUser(userRes.data.data);
+      } catch {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    restoreUser();
+  }, []);
 
   return (
-    <CurrentUserContext.Provider value={{ user, setUser }}>{children}</CurrentUserContext.Provider>
+    <CurrentUserContext.Provider value={{ user, setUser, isLoading }}>
+      {children}
+    </CurrentUserContext.Provider>
   );
 }
 

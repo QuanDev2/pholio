@@ -6,6 +6,7 @@ import { prisma } from "../lib/prisma";
 import bcrypt from "bcrypt";
 import { signAccessToken } from "../lib/jwt";
 import { issueRefreshToken, setRefreshCookie } from "../lib/refreshToken";
+import { authenticate } from "../middleware/authenticate";
 
 const router = Router();
 
@@ -112,6 +113,21 @@ router.post(
       sameSite: "strict",
     });
     return res.status(204).end();
+  }),
+);
+
+router.get(
+  "/me",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const { password: _, ...safeUser } = user;
+
+    return res.status(200).json({ data: safeUser });
   }),
 );
 

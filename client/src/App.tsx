@@ -18,7 +18,9 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useCurrentUser();
+  const { user, isLoading } = useCurrentUser();
+
+  if (isLoading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }

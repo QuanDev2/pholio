@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { prisma } from "../lib/prisma";
+import { assertOwnsPost } from "../lib/postOwnership";
 import { Prisma } from "../generated/prisma/client";
 import { serializePost, postInclude } from "../lib/serializers";
 import { assertTagsExist } from "../lib/tags";
@@ -83,7 +84,7 @@ router.post(
   authenticate,
   validate(createPostSchema),
   asyncHandler(async (req, res) => {
-    const { title, authorId, tags } = req.body;
+    const { title, tags } = req.body;
 
     const base = slugify(title, { lower: true, strict: true });
     const slug = `${base}-${nanoid(6)}`;
@@ -96,7 +97,7 @@ router.post(
         slug,
         content: { type: "doc", content: [] },
         published: false,
-        author: { connect: { id: authorId } },
+        author: { connect: { id: req.user!.id } },
         tags: {
           connect: tags.map((id: string) => ({ id })),
         },
@@ -113,7 +114,10 @@ router.patch(
   authenticate,
   validate(updatePostSchema),
   asyncHandler(async (req, res) => {
+    // authorization
     const id = req.params.id;
+    await assertOwnsPost(id, req.user!.id);
+
     const { title, content, published } = req.body;
     const tags = req.body.tags;
     if (tags !== undefined) {
@@ -148,16 +152,10 @@ router.delete(
   "/:id",
   authenticate,
   asyncHandler(async (req, res) => {
-    try {
-      await prisma.post.delete({
-        where: { id: req.params.id },
-      });
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        return res.status(404).json({ error: "Post not found" });
-      }
-      throw err;
-    }
+    await assertOwnsPost(req.params.id, req.user!.id);
+    await prisma.post.delete({
+      where: { id: req.params.id },
+    });
     res.status(204).send();
   }),
 );
@@ -169,6 +167,8 @@ router.post(
   "/:id/photos",
   authenticate,
   asyncHandler(async (req, res) => {
+    await assertOwnsPost(req.params.id, req.user!.id);
+
     res.status(201).json({ message: "add photo stub", postId: req.params.id });
   }),
 );

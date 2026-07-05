@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Prisma generated client — regenerated via postinstall (`prisma generate`)
 server/src/generated/
 

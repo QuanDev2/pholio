@@ -88,10 +88,13 @@ router.post(
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // rotating token: 1. delete the old; 2. Issue new + set rotated cookie; 3. mint a new access token; 4. send the new access token back
-    await prisma.refreshToken.delete({ where: { token } });
-
-    const newRefreshToken = await issueRefreshToken(stored.userId);
+    // rotating token: delete old + issue new atomically. If issue fails after the
+    // delete, the transaction rolls the delete back — the user can't be left with
+    // zero valid refresh tokens (both writes commit, or neither does).
+    const newRefreshToken = await prisma.$transaction(async (tx) => {
+      await tx.refreshToken.delete({ where: { token } });
+      return issueRefreshToken(stored.userId, tx);
+    });
     setRefreshCookie(res, newRefreshToken);
 
     const accessToken = signAccessToken(stored.userId);

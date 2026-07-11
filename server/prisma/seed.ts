@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import { prisma } from "../src/lib/prisma";
 
 /** User  →  Post  →  Photo
@@ -33,8 +34,8 @@ async function main() {
     data: {
       username: "quan",
       name: "Quan Nguyen",
-      email: "contact@pholio.dev",
-      password: "password",
+      email: "quan@pholio.dev",
+      password: await bcrypt.hash("password", 12),
       bio: "I'm a photographer and developer.",
     },
   });
@@ -44,7 +45,7 @@ async function main() {
       username: "han",
       name: "Han Nguyen",
       email: "han@pholio.dev",
-      password: "placeholder",
+      password: await bcrypt.hash("password", 12),
       bio: "I'm a wife of a photographer and developer.",
     },
   });

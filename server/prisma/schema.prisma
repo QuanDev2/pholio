@@ -37,17 +37,25 @@ model Post {
   @@index([authorId])
 }
 
+enum PhotoStatus {
+  pending
+  processing
+  ready
+  error
+}
+
 model Photo {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   key       String
   alt       String?
   caption   String?
   postId    String
-  position  Int      @default(0)
+  position  Int         @default(0)
   exifData  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  post      Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  status    PhotoStatus @default(pending)
 
   @@index([postId])
 }

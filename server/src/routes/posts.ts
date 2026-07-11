@@ -10,6 +10,10 @@ import { nanoid } from "nanoid";
 import { validate } from "../middleware/validate";
 import { createPostSchema, updatePostSchema } from "../schemas/posts";
 import { authenticate } from "../middleware/authenticate";
+import { randomUUID } from "crypto";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { s3 } from "../lib/s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
 const router = Router();
@@ -194,6 +198,26 @@ router.delete(
       postId: req.params.id,
       photoId: req.params.photoId,
     });
+  }),
+);
+
+// Photo posting
+router.post(
+  "/:id/photos/upload-url",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const postId = req.params.id;
+    await assertOwnsPost(postId, req.user!.id);
+    const key = `photos/${postId}/${randomUUID()}.jpg`;
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Key: key,
+      ContentType: req.body.contentType,
+    });
+
+    const url = await getSignedUrl(s3, command, { expiresIn: 900 });
+
+    return res.status(200).json({ data: { url, key } });
   }),
 );
 

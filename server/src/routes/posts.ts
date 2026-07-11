@@ -14,6 +14,8 @@ import { randomUUID } from "crypto";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3 } from "../lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { uploadUrlSchema } from "../schemas/photo";
+import z from "zod";
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
 const router = Router();
@@ -205,10 +207,13 @@ router.delete(
 router.post(
   "/:id/photos/upload-url",
   authenticate,
+  validate(uploadUrlSchema),
   asyncHandler(async (req, res) => {
     const postId = req.params.id;
     await assertOwnsPost(postId, req.user!.id);
-    const key = `photos/${postId}/${randomUUID()}.jpg`;
+    const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
+    const { contentType } = req.body as z.infer<typeof uploadUrlSchema>;
+    const key = `photos/${postId}/${randomUUID()}.${EXT[contentType]}`;
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: key,

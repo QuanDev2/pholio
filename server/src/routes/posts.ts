@@ -217,7 +217,7 @@ router.post(
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: key,
-      ContentType: req.body.contentType,
+      ContentType: contentType,
     });
 
     const url = await getSignedUrl(s3, command, { expiresIn: 900 });

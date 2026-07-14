@@ -5,7 +5,7 @@ type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 const getUploadUrl = async (postId: string, fileType: string) => {
   const res = await api.post(`posts/${postId}/photos/upload-url`, { contentType: fileType });
-  return { url: res.data.url, key: res.data.key };
+  return { url: res.data.data.url, key: res.data.data.key };
 };
 
 const putToS3 = (url: string, file: File, setProgress: (pct: number) => void) => {

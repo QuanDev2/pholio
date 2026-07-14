@@ -48,7 +48,6 @@ export default function Post() {
 
   return (
     <>
-      <TestUpload postId={slug!} />
       <div className="mx-auto max-w-3xl px-4 py-10">
         <button
           onClick={() => navigate(-1)}

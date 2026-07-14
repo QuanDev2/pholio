@@ -20,11 +20,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     async function restoreUser() {
       try {
-        const res = await axios.post(
-          "http://localhost:4000/api/v1/auth/refresh",
-          {},
-          { withCredentials: true },
-        );
+        const res = await api.post("auth/refresh", {}, { withCredentials: true });
         setAccessToken(res.data.token);
         const userRes = await api.get("/auth/me");
         setUser(userRes.data.data);

@@ -5,7 +5,6 @@ type TagFiltersProps = {
 };
 
 export default function TagFilters({ tags, selectedTag, onTagChange }: TagFiltersProps) {
-  console.log(tags);
   return (
     <div className="flex flex-wrap gap-2">
       {tags.map((tag) => (

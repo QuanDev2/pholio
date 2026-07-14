@@ -3,6 +3,7 @@ import PostCard from "./posts/PostCard";
 import { useCurrentUser } from "../context/CurrentUserContext";
 import { useQuery } from "@tanstack/react-query";
 import type { Post } from "../types";
+import { api } from "../lib/apiClient";
 
 export default function Portfolio() {
   const { username: paramUsername } = useParams();
@@ -11,10 +12,7 @@ export default function Portfolio() {
 
   const { data, isLoading, isError } = useQuery<Post[]>({
     queryKey: ["posts", "user", paramUsername],
-    queryFn: () =>
-      fetch(`http://localhost:4000/api/v1/users/${paramUsername}/posts`)
-        .then((r) => r.json())
-        .then((json) => json.data as Post[]),
+    queryFn: () => api.get(`users/${paramUsername}/posts`).then((res) => res.data.data as Post[]),
     select: (posts) => {
       return posts
         .filter((post) => post.author.username === paramUsername && (post.published || isOwner))

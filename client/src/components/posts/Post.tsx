@@ -3,6 +3,8 @@ import { useState, useRef } from "react";
 import type { Photo, Post } from "../../types";
 import Lightbox from "./Lightbox";
 import { useQuery } from "@tanstack/react-query";
+import TestUpload from "../TestUpload";
+import { api } from "../../lib/apiClient";
 
 export default function Post() {
   const { slug } = useParams();
@@ -14,10 +16,7 @@ export default function Post() {
   // useQuery
   const { data, isLoading, isError } = useQuery<Post>({
     queryKey: ["posts", slug],
-    queryFn: () =>
-      fetch(`http://localhost:4000/api/v1/posts/${slug}`).then((r) =>
-        r.json().then((json) => json.data as Post),
-      ),
+    queryFn: () => api.get(`posts/${slug}`).then((r) => r.data.data as Post),
     select: (post) => {
       const formattedDate = new Intl.DateTimeFormat("en", {
         month: "long",
@@ -49,6 +48,7 @@ export default function Post() {
 
   return (
     <>
+      <TestUpload postId={slug!} />
       <div className="mx-auto max-w-3xl px-4 py-10">
         <button
           onClick={() => navigate(-1)}

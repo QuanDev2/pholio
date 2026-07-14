@@ -7,6 +7,7 @@ import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
 import type { Post } from "../../types";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { SortOrder } from "./postFilterReducer";
+import { api } from "../../lib/apiClient";
 
 interface PostsPageResponse {
   data: Post[];
@@ -25,11 +26,7 @@ export default function PostFeed() {
     useInfiniteQuery<PostsPageResponse>({
       queryKey: ["posts"],
       queryFn: ({ pageParam }) =>
-        fetch(`http://localhost:4000/api/v1/posts?page=${pageParam}&limit=${PAGE_LIMIT}`).then(
-          (r) => {
-            return r.json();
-          },
-        ),
+        api.get(`posts?page=${pageParam}&limit=${PAGE_LIMIT}`).then((r) => r.data),
       initialPageParam: 1,
       getNextPageParam: (lastPage) => {
         return lastPage.next ?? undefined;

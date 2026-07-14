@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import { useCurrentUser } from "../context/CurrentUserContext";
 import UserMenu from "./UserMenu";
+import TestUpload from "../components/TestUpload";
 
 export default function Navbar() {
   const { user } = useCurrentUser();

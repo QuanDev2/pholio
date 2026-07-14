@@ -92,9 +92,6 @@ router.post(
     // delete, the transaction rolls the delete back — the user can't be left with
     // zero valid refresh tokens (both writes commit, or neither does).
     const newRefreshToken = await prisma.$transaction(async (tx) => {
-      console.log(token);
-      console.log(await tx.refreshToken.findUnique({ where: { token } }));
-
       await tx.refreshToken.delete({ where: { token } });
       return issueRefreshToken(stored.userId, tx);
     });

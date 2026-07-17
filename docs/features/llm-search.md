@@ -1,165 +1,167 @@
-# Feature: Semantic Search over Posts (LLM/RAG)
+# Feature: LLM Search (RAG "AI Summary") over Posts
 
-End-user search that matches **meaning**, not exact words. Looks like a normal
-search box; smarter results underneath. Built in phases so each ships as a working
-product and a separate resume bullet. No phase throws away the previous one.
+The **lead AI feature**. On `/explore`, next to the normal text search, an **AI Summary**
+button. Ask *"food in Saigon"* and get a grounded, **inline-cited** prose summary of what
+users actually posted, with photos and links back to the source posts.
 
-- **Phase 0 (v1):** text RAG over `title + tags + body`.
-- **Phase 1 (incremental):** vision captions → image content becomes searchable text.
-- **Phase 2 (incremental):** multimodal/CLIP embeddings → search actual pixels + reverse-image search.
+This is true **RAG** (retrieve → generate → cite), not just semantic reranking: it embeds
+the query, retrieves the most relevant published posts, then an LLM writes a summary
+grounded **only** in those posts, with citations.
 
-Scale note: Pholio is thousands of posts, not millions. `pgvector` on the Postgres
-you already run is enough for all three phases. Do **not** add Pinecone/Weaviate yet.
+> **Architecture note (read first).** The AI compute lives in **beef-broth**
+> (`~/projects/apps/beef-broth`), Pholio's Python/FastAPI AI service — not in this Node
+> backend. Pholio **triggers** beef-broth over HTTP and **renders** the result. beef-broth
+> owns embeddings, retrieval, and generation. Full AI design: beef-broth's
+> `design/overview.md`. This doc is the **Pholio-side** spec.
 
 ---
 
-## Phase 0 — Text RAG (build this first)
+## Who does what
 
-### 1. Schema: add an embedding column
+| Step | Owner |
+|---|---|
+| Publish/edit/delete events, enqueue ingest jobs | **Pholio** (Express + BullMQ) |
+| Embed post text, store vectors, retrieve top-k, generate the cited summary | **beef-broth** (Python) |
+| The vector table (in the **shared** Postgres) | **beef-broth owns it** |
+| `Post` / `Photo` tables | **Pholio owns them**; beef-broth gets content by HTTP payload |
+| The `/explore` UI (two buttons, the answer card) | **Pholio** (React) |
 
-Enable pgvector once, then store one vector per post.
+**Boundary:** beef-broth never reads Pholio's `Post`/`Photo` tables. Pholio sends post
+content in the request body. beef-broth reads/writes only its own vector table.
+
+---
+
+## Providers (locked 2026-07-15)
+
+- **Embeddings:** Voyage AI, `voyage-3.5` → **`vector(1024)`**. (Anthropic has no
+  first-party embedding API; Voyage is their recommended partner.)
+- **Generation (the summary):** Claude.
+- Same embedding model for index **and** query — mixing models/dims breaks similarity.
+
+---
+
+## Schema — beef-broth's vector table (shared Postgres)
+
+beef-broth owns a table keyed by Pholio's post id. Pholio does **not** add an embedding
+column to `Post` (keeps the service boundary clean).
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
--- dimension must match your embedding model (e.g. 1536 for OpenAI text-embedding-3-small)
-ALTER TABLE "Post" ADD COLUMN embedding vector(1536);
-CREATE INDEX ON "Post" USING ivfflat (embedding vector_cosine_ops);
+
+-- Owned by beef-broth; lives in the shared DB.
+CREATE TABLE post_embedding (
+  post_id    text PRIMARY KEY,          -- references Pholio's Post.id (by value, no FK across owners)
+  embedding  vector(1024) NOT NULL,     -- Voyage voyage-3.5
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON post_embedding USING ivfflat (embedding vector_cosine_ops);
 ```
-
-Prisma doesn't natively type `vector`. Options: keep it as `Unsupported("vector")`
-in the schema and write raw SQL for the vector ops, or use the `pgvector` Node helper.
-Either way the embedding read/write happens via `$queryRaw` / `$executeRaw`.
-
-### 2. Build the text to embed
-
-Embed the **whole bundle**, not just body. Photographers write thin bodies; title +
-tags carry the signal when the body is empty.
-
-```
-embedInput = `${title}\n\nTags: ${tags.join(", ")}\n\n${plainTextBody}`
-```
-
-`body` is Tiptap JSON — flatten it to plain text first (walk the doc, concat text nodes).
-
-### 3. Embed on publish (and on edit)
-
-When a post is published or its text changes:
-
-```ts
-const input = buildEmbedInput(post);
-const embedding = await embed(input);            // one API call → number[]
-await db.$executeRaw`UPDATE "Post" SET embedding = ${toVector(embedding)} WHERE id = ${post.id}`;
-```
-
-Do it in your existing BullMQ queue, not inline on the request — embedding is a
-network call and shouldn't block publish. (Bonus: shows async/worker design.)
-
-Backfill once for existing posts: a script that loops all published posts and embeds them.
-
-### 4. Search endpoint
-
-```ts
-// GET /api/search?q=moody night street
-const qVec = await embed(query);
-const results = await db.$queryRaw`
-  SELECT id, title, slug, 1 - (embedding <=> ${toVector(qVec)}) AS score
-  FROM "Post"
-  WHERE published = true AND embedding IS NOT NULL
-  ORDER BY embedding <=> ${toVector(qVec)}   -- <=> = cosine distance
-  LIMIT 20;
-`;
-```
-
-`<=>` is pgvector's cosine-distance operator. Lower distance = more similar. Wire
-this into the existing `/explore` search box; the UI doesn't change.
-
-### 5. Gotchas to handle
-- **Empty query** → fall back to your normal recency/keyword sort, don't embed "".
-- **Model dim mismatch** → the `vector(N)` size must equal your model's output dim.
-- **Cost/latency** → query embedding is one small call (~tens of ms). Cache identical
-  recent queries if you want.
-- **Hybrid is better than pure semantic** for short keyword queries — consider
-  combining vector score with a plain `ILIKE`/full-text score later. Not required for v1.
-
-**Resume bullet:** *"Built semantic search with embeddings + pgvector over user posts;
-async embedding pipeline on BullMQ."*
 
 ---
 
-## Phase 1 — Vision captions (incremental, Approach A)
+## The text that gets embedded
 
-Make the **photo content** searchable without changing the search pipeline at all.
-The image gets turned into text, then flows through the exact Phase-0 path.
-
-### How
-At upload (after the S3 put), run the photo through a vision model and store a
-generated description:
-
-```ts
-const caption = await describeImage(photoUrl);
-// "a man in a red coat walking through heavy rain at night, neon reflections, low-key lighting"
-await db.photo.update({ where: { id }, data: { aiCaption: caption } });
-```
-
-Then add the post's photo captions to the embed bundle from Phase 0 step 2:
+Embed the **whole bundle**, not just the body — photographers write thin bodies; title,
+tags, and photo captions carry the signal.
 
 ```
-embedInput = title + tags + body + photoCaptions.join("\n")
+embedInput = `${title}\n\nTags: ${tags.join(", ")}\n\n${plainTextBody}\n\n${photoCaptions.join("\n")}`
 ```
 
-Re-embed the post. Now `sunset` finds a sunset photo even if the caption the user
-wrote was just "finally."
+- `body` is Tiptap JSON → flatten to plain text first (walk the doc, concat text nodes;
+  reuse the same `generateText` helper the feed uses).
+- `photoCaptions` are the **AI vision captions** (see "Vision captions" below). Include
+  them so a great photo with a lazy human caption is still findable.
 
-### Notes
-- One vision call per uploaded photo, **once**, at upload. Cheap, async via BullMQ.
-- Quality is capped by caption quality — if the model misses the dog, the dog isn't
-  searchable. Acceptable for this phase.
-- Free side benefit: `aiCaption` doubles as **alt-text** for accessibility.
-
-**Resume bullet:** *"Added vision-model captioning so image content is searchable;
-reused the existing embedding pipeline."*
+Pholio builds this bundle and sends it to beef-broth's `/ingest`; beef-broth embeds + stores.
 
 ---
 
-## Phase 2 — Multimodal / CLIP embeddings (incremental, Approach B)
+## Ingest lifecycle (keep the index in sync)
 
-True image search: embed images and text into the **same vector space** so a text
-query compares directly against image vectors — no captioning middleman. Unlocks
-**reverse-image search** ("find photos like this one") almost for free.
+The vector table is a *separate copy* of each post's meaning. It must be synced or the
+summary cites stale/deleted content. All three events are in v1:
 
-### How
-- Add a second embedding store for images (e.g. `Photo.imageEmbedding vector(512)`),
-  produced by a CLIP-style / multimodal embedding model.
-- At search time, embed the **text query with the same multimodal model**, then run
-  similarity against `Photo.imageEmbedding`.
-- Merge/blend with the Phase-0 text score (a post ranks on both its text and its photos).
+| Event | Pholio action | beef-broth action |
+|---|---|---|
+| **Publish** | enqueue ingest job → `POST /ingest {postId, bundle}` | embed → upsert row |
+| **Edit** a published post | enqueue ingest job (re-send bundle) | re-embed → update row |
+| **Unpublish / delete** | `POST /ingest` delete (or a `DELETE`) with `{postId}` | remove row |
 
-### Why it's a separate phase, not the start
-- New model + new vector store = a second unfamiliar thing to debug. Don't stack it
-  on top of first-time RAG.
-- Text-vs-image similarity behaves differently than text-vs-text; needs threshold tuning.
+Run these **async on BullMQ**, never inline on the publish request. Backfill once: a
+script loops existing published posts and posts each bundle to `/ingest`.
 
-### Reverse-image search (drops out of this phase)
-Given a photo's `imageEmbedding`, find nearest neighbors → "similar photos / similar
-photographers." Same `<=>` query, image vector instead of query vector.
-
-**Resume bullet:** *"Built multimodal (CLIP) search over images + text in a shared
-embedding space, including reverse-image lookup."*
+Only **published** posts are ever indexed. Drafts/unpublished are never sent.
 
 ---
 
-## Sequencing summary
+## Search + summary (the RAG request)
 
-| Phase | What | Difficulty | New infra | Ships as |
-|---|---|---|---|---|
-| 0 | Text RAG (title+tags+body) | Low-Med | pgvector column | Working search |
-| 1 | Vision captions → searchable images | Low | none (reuses 0) | Better recall + free alt-text |
-| 2 | CLIP multimodal + reverse-image | Med | image embedding store | "Real" image search |
+The AI Summary button is **opt-in** (a click), so the paid LLM call only fires on demand.
+It's a **sync** call — the user waits with a spinner (~2-5s).
 
-Each row is independently shippable. Stop after any of them and you still have a
-working feature. Don't start at Phase 2.
+```
+user clicks "AI Summary" on /explore (with active filters)
+  → Pholio: POST /search { query, filters }   (sync HTTP to beef-broth)
+      beef-broth:
+        1. embed(query)                                    // Voyage
+        2. retrieve top-k from post_embedding (cosine <=>) // pure semantic, v1
+        3. Pholio-supplied filter set scopes candidate postIds
+        4. Claude summarizes ONLY the retrieved posts, grounded, with inline [n] markers
+      → returns { summary, citations: [{n, postId}], sourcePostIds }
+  → Pholio: render the answer card (prose + inline [n] links + photo thumbnails + source links)
+```
+
+- **Retrieval:** **pure semantic** for v1 (embed query → cosine top-k). Hybrid
+  (semantic + keyword) is a later upgrade if recall disappoints.
+- **Respect active `/explore` filters:** if the user has a tag/search filter set, the
+  summary draws **only** from that filtered subset. Pholio passes the allowed post ids (or
+  the filter predicate) so beef-broth restricts retrieval.
+- **Grounding + citations:** the summary uses only retrieved content; each claim carries an
+  inline marker `[n]` mapping to a source post. This is the core "responsible AI" story.
+
+---
+
+## UI (`/explore`)
+
+- **Two buttons:** **Text Search** (existing keyword/full-text, unchanged) and **AI Summary** (RAG).
+- **Answer card:** a prose summary (a paragraph or two) with inline `[n]` citation links, a
+  row of photo thumbnails from the source posts, and links back to those posts.
+- The normal filtered post grid stays; the card renders above/beside it.
+
+---
+
+## Vision captions (part of this pipeline, not a separate track)
+
+Making **photo content** searchable is **caption-then-embed**, and it feeds the same index:
+
+- At upload (after the S3 put), Pholio enqueues a caption job → beef-broth `POST /caption`
+  → Claude vision writes a description → stored as `Photo.aiCaption`.
+- Those captions go into the embed bundle above, so `sunset` finds a sunset photo even if
+  the human caption was just "finally."
+- One vision call per photo, once, async. Free side benefit: `aiCaption` doubles as alt-text.
+
+> **No CLIP.** We deliberately do **not** do joint image-text (CLIP) embeddings. Caption-then-embed
+> gives most of the value for a fraction of the work, keeps one vector space, and needs no
+> local model. Being able to explain *why not CLIP* is itself a strong interview point.
+
+---
+
+## Gotchas
+- **Empty query** → don't embed `""`; fall back to normal recency/keyword sort.
+- **Dim mismatch** → `vector(1024)` must match Voyage's output dim. Pin the model.
+- **Stale index** → this is why edit/delete ingest is in v1, not deferred.
+- **Small corpus at demo time** → you seed the posts (~20-30). Retrieval is architecturally
+  justified but not yet load-bearing; seed varied content and say so honestly.
+
+---
 
 ## Roadmap placement
-This is a **Phase 2 / post-core** feature. Core post CRUD, auth, S3 upload, and the
-`/explore` filter must be solid first. Bolting search on before the data model is
-stable is wasted work — the embedding bundle depends on the final shape of Post.
+
+Integrates around **Week 8** (needs the editor, photo upload, and `/explore` feed first).
+This is now the **primary AI feature**, not an optional off-critical-path extra. The old
+"optional differentiator / Phase 2 CLIP" framing is retired (see beef-broth `archive/`).
+
+**Resume bullet:** *"Built RAG search: Voyage embeddings + pgvector retrieval feeding a
+grounded, inline-cited LLM summary; async ingest pipeline on BullMQ; caption-then-embed so
+image content is searchable."*

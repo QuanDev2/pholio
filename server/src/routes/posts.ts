@@ -14,7 +14,7 @@ import { randomUUID } from "crypto";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3 } from "../lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { uploadUrlSchema } from "../schemas/photo";
+import { uploadUrlSchema, registerPhotoSchema } from "../schemas/photo";
 import z from "zod";
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
@@ -191,21 +191,42 @@ router.delete(
 // --- Nested photo writes (real S3-backed logic in Week 5) ---
 // A photo is always addressed through its parent post: Photo.postId is required.
 
+// POST /posts/:id/photos → register an already-uploaded S3 object as a Photo
+// row (called after the client PUTs the file to the presigned URL). The bytes
+// are already in S3; this is what tells the DB they exist.
 router.post(
   "/:id/photos",
   authenticate,
-  // validate(schema),
+  validate(registerPhotoSchema),
   asyncHandler(async (req, res) => {
-    await assertOwnsPost(req.params.id, req.user!.id);
-    // prisma.photo.create( {
-    //   data: {
-    //   postId: ,
-    //   key: ,
-    //   fileName: ,
-    //   status: 'pending',
-    //   position: ,
-    // }})
-    res.status(201).json({ message: "add photo stub", postId: req.params.id });
+    const postId = req.params.id;
+    await assertOwnsPost(postId, req.user!.id);
+
+    const { key, caption } = req.body as z.infer<typeof registerPhotoSchema>;
+
+    // Trust boundary: the client hands back a key, but could send any string.
+    // Our upload-url endpoint only ever signs keys under photos/{postId}/, so
+    // reject anything outside this post's prefix — a user can't claim an
+    // arbitrary S3 object (or one belonging to another post).
+    if (!key.startsWith(`photos/${postId}/`)) {
+      return res.status(400).json({ error: "Key does not belong to this post" });
+    }
+
+    // New photos append to the end of the strip: position = current count
+    // (0 photos → position 0, and so on). Server-computed, never client-sent.
+    const position = await prisma.photo.count({ where: { postId } });
+
+    const photo = await prisma.photo.create({
+      data: {
+        postId,
+        key,
+        caption,
+        status: "pending",
+        position,
+      },
+    });
+
+    res.status(201).json({ data: photo });
   }),
 );
 

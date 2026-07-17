@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import Editor from "./components/editor/Editor";
+import NewPostRedirect from "./components/editor/NewPostRedirect";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -99,7 +100,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <div>Editor (stub)</div>
+                  <NewPostRedirect />
                 </Layout>
               </ProtectedRoute>
             }

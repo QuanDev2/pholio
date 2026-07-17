@@ -7,6 +7,7 @@ import Portfolio from "./components/Portfolio";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
+import Editor from "./components/editor/Editor";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -108,7 +109,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <div>Post editor (stub)</div>
+                  <Editor />
                 </Layout>
               </ProtectedRoute>
             }

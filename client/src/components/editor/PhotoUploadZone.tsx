@@ -40,7 +40,15 @@ export default function PhotoUploadZone({ postId }: { postId: string }) {
         }`}
       >
         <input {...getInputProps()} />
-        {isDragActive ? "Drop photos here…" : "Drag photos here, or click to choose"}
+        {isDragActive ? (
+          "Drop photos here…"
+        ) : (
+          <>
+            {/* Drag is desktop-only; on touch the zone is a tap-to-pick button. */}
+            <span className="hidden sm:inline">Drag photos here, or click to choose</span>
+            <span className="sm:hidden">Tap to add photos</span>
+          </>
+        )}
       </div>
 
       {pending.length > 0 && (

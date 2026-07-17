@@ -1,7 +1,8 @@
 import { api } from "./apiClient";
-import type { Post } from "../types";
+import type { Post, Photo } from "../types";
 
 type PostResponse = { data: Post };
+type PhotoResponse = { data: Photo };
 
 /**
  * Create a blank draft post. Called by the editor's draft-on-open flow: opening
@@ -25,6 +26,17 @@ export async function createDraft() {
  */
 export async function getPost(id: string) {
   const res = await api.get<PostResponse>(`/posts/mine/${id}`);
+
+  return res.data.data;
+}
+
+/**
+ * Register an already-uploaded S3 object as a Photo on the post. Called after
+ * the file has been PUT to S3 (via useUpload), passing back the S3 `key`. The
+ * server sets status:'pending' and owns ordering (createdAt).
+ */
+export async function registerPhoto(postId: string, key: string) {
+  const res = await api.post<PhotoResponse>(`/posts/${postId}/photos`, { key });
 
   return res.data.data;
 }

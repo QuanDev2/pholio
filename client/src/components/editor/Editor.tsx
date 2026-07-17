@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getPost } from "../../lib/postsApi";
+import PhotoUploadZone from "./PhotoUploadZone";
 
 /**
  * The editor "room" — /editor/:postId. Loads an existing post (draft or
@@ -43,10 +44,8 @@ export default function Editor() {
         className="w-full border-0 border-b border-zinc-200 bg-transparent pb-2 text-3xl font-bold text-zinc-950 focus:border-zinc-400 focus:outline-none"
       />
 
-      {/* Photo area — dropzone (Section 2) + tray (Section 4) land here. */}
-      <section className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-zinc-400">
-        Photo upload area
-      </section>
+      {/* Photo area — tray (Section 4) will render the post's saved photos below. */}
+      <PhotoUploadZone postId={post.id} />
     </div>
   );
 }

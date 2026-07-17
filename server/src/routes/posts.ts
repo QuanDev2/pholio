@@ -212,17 +212,12 @@ router.post(
       return res.status(400).json({ error: "Key does not belong to this post" });
     }
 
-    // New photos append to the end of the strip: position = current count
-    // (0 photos → position 0, and so on). Server-computed, never client-sent.
-    const position = await prisma.photo.count({ where: { postId } });
-
     const photo = await prisma.photo.create({
       data: {
         postId,
         key,
         caption,
         status: "pending",
-        position,
       },
     });
 

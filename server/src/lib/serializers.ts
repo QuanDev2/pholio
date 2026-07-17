@@ -2,7 +2,7 @@ import { Prisma, Photo } from "../generated/prisma/client";
 
 // The relations every post-returning endpoint hydrates before serializing.
 // Pass as `include: postInclude` to findMany/findUnique/create/update so the
-// returned object always carries photos (position-ordered), author, and tags —
+// returned object always carries photos (createdAt-ordered), author, and tags —
 // the exact shape serializePost expects.
 //
 // `satisfies` (not a plain `: Prisma.PostInclude` annotation) type-checks the
@@ -10,7 +10,7 @@ import { Prisma, Photo } from "../generated/prisma/client";
 // return shape — without it, the relations would widen and serializePost would
 // lose its types.
 export const postInclude = {
-  photos: { orderBy: { position: "asc" } },
+  photos: { orderBy: { createdAt: "asc" } },
   author: {
     select: {
       id: true,

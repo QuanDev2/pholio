@@ -84,7 +84,7 @@
       Built across three weeks: <strong>Week 3</strong> — draft create
       (<code>POST /posts</code>) + autosave (<code>PATCH /posts/:id</code>) ·
       <strong>Week 5</strong> — presigned S3 upload + photo registration ·
-      <strong>Week 6</strong> — background worker (resize + EXIF).
+      <strong>Week 6</strong> — background worker (resize).
     </p>
 
     <div class="diagram">
@@ -113,7 +113,7 @@ sequenceDiagram
     Editor->>API: POST /posts/:id/photos { key }
     API-->>Editor: { photo } (status:pending)
     API->>Worker: enqueue job
-    Worker->>Worker: resize + extract EXIF
+    Worker->>Worker: resize
     Worker->>API: update photo (status:ready, size URLs)
 
     Note over User,API: Week 3 — publish is just a flag flip
@@ -149,7 +149,7 @@ sequenceDiagram
         uploading.
       </li>
       <li>
-        <strong>Worker</strong> only <em>processes</em> the image (resize, EXIF). It does
+        <strong>Worker</strong> only <em>processes</em> the image (resize). It does
         <strong>not</strong> attach photos to posts. Easy to conflate — keep them
         separate.
       </li>

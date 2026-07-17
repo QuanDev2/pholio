@@ -7,7 +7,7 @@ photo always has a `postId` to attach to (`Photo.postId` is required).
 Built across three weeks:
 - **Week 3** — draft create (`POST /posts`) + autosave (`PATCH /posts/:id`)
 - **Week 5** — presigned S3 upload + photo registration
-- **Week 6** — background worker (resize + EXIF)
+- **Week 6** — background worker (resize)
 
 ```mermaid
 sequenceDiagram
@@ -34,7 +34,7 @@ sequenceDiagram
     Editor->>API: POST /posts/:id/photos { key }
     API-->>Editor: { photo } (status:pending)
     API->>Worker: enqueue job
-    Worker->>Worker: resize + extract EXIF
+    Worker->>Worker: resize
     Worker->>API: update photo (status:ready, size URLs)
 
     Note over User,API: Week 3 — publish is just a flag flip
@@ -57,7 +57,57 @@ sequenceDiagram
 
 - **Client (editor)** orchestrates: presign → upload → register the key. It *attaches*
   photos to the post, one at a time, as each finishes uploading.
-- **Worker** only *processes* the image (resize, EXIF). It does **not** attach photos to
+- **Worker** only *processes* the image (resize). It does **not** attach photos to
   posts. Easy to conflate — keep them separate.
 - (A browser **Service Worker** is an unrelated thing — a client-side network proxy. The
   background image processor here is just a server-side queue consumer.)
+
+---
+
+## "Write with AI" — the AI-seeded draft (post generation)
+
+The AI post-generation feature is **not a second editor**. There is one editor and one
+canonical format (Tiptap JSON + `Photo` rows). "Write with AI" just *pre-fills* it. The
+AI work runs in **beef-broth** (Pholio's Python AI service); Pholio triggers it and applies
+the result.
+
+Precondition: **photos are uploaded first** (the flow above). Then the button writes.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Editor as Editor (browser)
+    participant API as Express API
+    participant Queue as BullMQ
+    participant BB as beef-broth (Python)
+
+    Note over User,Editor: photos already uploaded to the draft
+    User->>Editor: click "Write with AI" (keywords, tone, length)
+    alt draft already has content
+        Editor->>User: confirm "This will replace your draft"
+    end
+    Note over Editor: editor LOCKS ("Generating…") — user can't type
+    Editor->>API: POST /posts/:id/generate { keywords, tone, length }
+    API->>Queue: enqueue generate-post job
+    Queue->>BB: POST /generate-post { photos, keywords, tone, length }
+    Note right of BB: caption photos → write beats →<br/>match photos to beats (grounded)
+    BB-->>Queue: { title, sections[], photoAssignments[], tags[] }
+    Queue->>API: convert → Tiptap doc + set Photo positions/embeds
+    API-->>Editor: draft filled (poll/notify)
+    Note over Editor: editor UNLOCKS, populated
+    User->>Editor: edit / publish as normal
+```
+
+### Things to remember
+
+1. **One editor, two doors.** Manual typing and AI generation both produce the same
+   `content` (Tiptap JSON) + `Photo` rows. The AI draft is just a pre-filled manual draft.
+2. **Confirm up front, lock during.** The overwrite confirm fires *before* generation; the
+   editor is locked *during* it. So nothing the user types can be clobbered mid-run.
+3. **Async + walk-away.** The job runs on BullMQ (20-30s). If the user closes the tab, the
+   job still finishes and they return to a filled draft.
+4. **Grounded only.** beef-broth writes from keywords + photo captions, never invents. If
+   keywords are thin it writes shorter rather than padding.
+5. **Photo placement.** `photoAssignments` pair each photo to the beat it illustrates
+   (embedding similarity: `beat_summary` vs caption). Pholio turns those into `PhotoEmbed`
+   nodes placed after each beat. See beef-broth `design/overview.md`.

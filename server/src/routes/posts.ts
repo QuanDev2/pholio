@@ -64,6 +64,28 @@ router.get(
   }),
 );
 
+// GET /posts/mine/:id → one of the caller's own posts by id (drafts included).
+// The editor loads by id; this is owner-scoped so you can never open someone
+// else's post. Separate from the public GET /:slug to sidestep the id-vs-slug
+// route collision (both are one-segment /posts/X). findFirst with the compound
+// where returns null for a nonexistent OR non-owned post → 404 (hides existence).
+router.get(
+  "/mine/:id",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const post = await prisma.post.findFirst({
+      where: { id: req.params.id, authorId: req.user!.id },
+      include: postInclude,
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    res.json({ data: serializePost(post) });
+  }),
+);
+
 // GET /posts/:slug → single post with photos + tags + author
 router.get(
   "/:slug",
@@ -172,9 +194,17 @@ router.delete(
 router.post(
   "/:id/photos",
   authenticate,
+  // validate(schema),
   asyncHandler(async (req, res) => {
     await assertOwnsPost(req.params.id, req.user!.id);
-
+    // prisma.photo.create( {
+    //   data: {
+    //   postId: ,
+    //   key: ,
+    //   fileName: ,
+    //   status: 'pending',
+    //   position: ,
+    // }})
     res.status(201).json({ message: "add photo stub", postId: req.params.id });
   }),
 );

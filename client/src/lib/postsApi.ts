@@ -18,15 +18,13 @@ export async function createDraft() {
 }
 
 /**
- * Load a single post by id (used by the editor room, /editor/:postId).
- *
- * NOTE: path is provisional. The backend currently exposes GET /posts/:slug,
- * which collides with a by-id route in the same position — the editor's by-id
- * fetch needs a disambiguated backend route before this resolves. Update the
- * path here once that's settled.
+ * Load one of the caller's own posts by id (used by the editor room,
+ * /editor/:postId). Owner-scoped on the server (drafts included), so it can't
+ * open another user's post. Uses /posts/mine/:id rather than /posts/:id to
+ * avoid colliding with the public GET /posts/:slug route.
  */
 export async function getPost(id: string) {
-  const res = await api.get<PostResponse>(`/posts/${id}`);
+  const res = await api.get<PostResponse>(`/posts/mine/${id}`);
 
   return res.data.data;
 }

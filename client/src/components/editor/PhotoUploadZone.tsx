@@ -1,16 +1,17 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import UploadItem from "./UploadItem";
 
 export type PendingUpload = { id: string; file: File; previewUrl: string };
 
 /**
  * The drag-and-drop upload area inside the editor. On drop, each file becomes a
- * PendingUpload with an instant local objectURL preview. (Actual S3 upload +
- * registration is added in S3 via a per-file UploadItem — one useUpload hook
- * each, so drops upload in parallel.)
+ * PendingUpload with an instant local objectURL preview, then renders as an
+ * UploadItem — one useUpload instance each, so drops upload to S3 in parallel.
+ * An item removes itself (onDone) once it's uploaded, registered, and folded
+ * into the saved-photo tray.
  */
 export default function PhotoUploadZone({ postId }: { postId: string }) {
-  void postId; // used in S3 when uploads are wired up
   const [pending, setPending] = useState<PendingUpload[]>([]);
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -22,6 +23,10 @@ export default function PhotoUploadZone({ postId }: { postId: string }) {
         previewUrl: URL.createObjectURL(file),
       })),
     ]);
+  }, []);
+
+  const removePending = useCallback((id: string) => {
+    setPending((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -54,11 +59,12 @@ export default function PhotoUploadZone({ postId }: { postId: string }) {
       {pending.length > 0 && (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {pending.map((item) => (
-            <img
+            <UploadItem
               key={item.id}
-              src={item.previewUrl}
-              alt=""
-              className="aspect-square w-full rounded-md object-cover"
+              postId={postId}
+              file={item.file}
+              previewUrl={item.previewUrl}
+              onDone={() => removePending(item.id)}
             />
           ))}
         </div>

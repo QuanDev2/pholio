@@ -3,7 +3,6 @@ import { useState, useRef } from "react";
 import type { Photo, Post } from "../../types";
 import Lightbox from "./Lightbox";
 import { useQuery } from "@tanstack/react-query";
-import TestUpload from "../TestUpload";
 import { api } from "../../lib/apiClient";
 
 export default function Post() {

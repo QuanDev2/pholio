@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getPost } from "../../lib/postsApi";
 import PhotoUploadZone from "./PhotoUploadZone";
+import PhotoTray from "./PhotoTray";
 
 /**
  * The editor "room" — /editor/:postId. Loads an existing post (draft or
@@ -44,8 +45,9 @@ export default function Editor() {
         className="w-full border-0 border-b border-zinc-200 bg-transparent pb-2 text-3xl font-bold text-zinc-950 focus:border-zinc-400 focus:outline-none"
       />
 
-      {/* Photo area — tray (Section 4) will render the post's saved photos below. */}
+      {/* Photo area: uploads-in-flight (zone) above the post's saved photos (tray). */}
       <PhotoUploadZone postId={post.id} />
+      <PhotoTray postId={post.id} photos={post.photos} />
     </div>
   );
 }

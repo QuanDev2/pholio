@@ -14,7 +14,7 @@ import { randomUUID } from "crypto";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3 } from "../lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { uploadUrlSchema, registerPhotoSchema } from "../schemas/photo";
+import { uploadUrlSchema, registerPhotoSchema, updatePhotoSchema } from "../schemas/photo";
 import z from "zod";
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
@@ -225,15 +225,33 @@ router.post(
   }),
 );
 
+// PATCH /posts/:id/photos/:photoId → edit a photo (caption only). Ownership is
+// via the parent post; the photo is additionally scoped to that post so you
+// can't reach another post's photo through a post you happen to own.
 router.patch(
   "/:id/photos/:photoId",
   authenticate,
+  validate(updatePhotoSchema),
   asyncHandler(async (req, res) => {
-    res.json({
-      message: "update photo stub",
-      postId: req.params.id,
-      photoId: req.params.photoId,
+    const { id: postId, photoId } = req.params;
+    await assertOwnsPost(postId, req.user!.id);
+
+    const { caption } = req.body as z.infer<typeof updatePhotoSchema>;
+
+    // updateMany lets us filter by BOTH id and postId (a single `update` can
+    // only match on the unique id). count === 0 → the photo doesn't exist or
+    // isn't on this post; either way it's a 404 to the caller.
+    const { count } = await prisma.photo.updateMany({
+      where: { id: photoId, postId },
+      data: { caption },
     });
+
+    if (count === 0) {
+      return res.status(404).json({ error: "Photo not found" });
+    }
+
+    const photo = await prisma.photo.findUnique({ where: { id: photoId } });
+    res.json({ data: photo });
   }),
 );
 

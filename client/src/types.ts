@@ -1,7 +1,10 @@
+export type PhotoStatus = "pending" | "processing" | "ready" | "error";
+
 export interface Photo {
   id: string;
   key: string; // s3 key
   url: string;
+  status: PhotoStatus; // server-owned; Week 6's worker drives pending -> ready
   caption?: string;
   metaData?: PhotoMetaData;
 }

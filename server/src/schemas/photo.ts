@@ -11,3 +11,9 @@ export const registerPhotoSchema = z.object({
   key: z.string().min(1),
   caption: z.string().max(500).optional(),
 });
+
+// Body for PATCH /posts/:id/photos/:photoId — edits an existing photo. Only the
+// caption is user-editable; key/status/urls are server-owned.
+export const updatePhotoSchema = z.object({
+  caption: z.string().max(500).optional(),
+});

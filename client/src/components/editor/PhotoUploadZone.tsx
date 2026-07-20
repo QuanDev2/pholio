@@ -56,16 +56,19 @@ export default function PhotoUploadZone({ postId }: { postId: string }) {
         )}
       </div>
 
+      {/* In-flight previews as the same small filmstrip as the saved tray, so a
+          finished upload doesn't visibly jump from a big tile to a small one. */}
       {pending.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+        <div className="flex gap-3 overflow-x-auto pb-2">
           {pending.map((item) => (
-            <UploadItem
-              key={item.id}
-              postId={postId}
-              file={item.file}
-              previewUrl={item.previewUrl}
-              onDone={() => removePending(item.id)}
-            />
+            <div key={item.id} className="w-28 shrink-0">
+              <UploadItem
+                postId={postId}
+                file={item.file}
+                previewUrl={item.previewUrl}
+                onDone={() => removePending(item.id)}
+              />
+            </div>
           ))}
         </div>
       )}

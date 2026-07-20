@@ -40,3 +40,14 @@ export async function registerPhoto(postId: string, key: string) {
 
   return res.data.data;
 }
+
+/**
+ * Update a photo's caption. Scoped to the post on the server (a photo not on
+ * this post 404s), so the tray's inline caption edit can only touch its own
+ * post's photos. Returns the updated Photo.
+ */
+export async function updatePhotoCaption(postId: string, photoId: string, caption: string) {
+  const res = await api.patch<PhotoResponse>(`/posts/${postId}/photos/${photoId}`, { caption });
+
+  return res.data.data;
+}

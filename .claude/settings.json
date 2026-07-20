@@ -14,7 +14,9 @@
       "Bash(node -e \"const fs=require\\('fs'\\);const p='node_modules/@types/react/index.d.ts';console.log\\(fs.readFileSync\\(p,'utf8'\\).includes\\('interface SubmitEvent'\\)||fs.readFileSync\\(p,'utf8'\\).match\\(/type SubmitEvent/\\)?'yes':'no React.SubmitEvent found'\\)\")",
       "Bash(./node_modules/.bin/eslint src/routes/auth.ts --format compact)",
       "Bash(./node_modules/.bin/eslint src/routes/auth.ts)",
-      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" rtk proxy npx prisma migrate reset --force)"
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" rtk proxy npx prisma migrate reset --force)",
+      "Bash(npm install *)",
+      "Bash(echo \"--- tsc exit: $? ---\")"
     ],
     "additionalDirectories": [
       "/Users/quandev/.claude/commands"

@@ -34,7 +34,7 @@ router.get(
       }),
     ]);
 
-    return res.json({ data: posts.map(serializePost), total, page, limit });
+    return res.json({ data: await Promise.all(posts.map(serializePost)), total, page, limit });
   }),
 );
 

@@ -40,7 +40,7 @@ router.get(
       prisma.post.count({ where: where }),
     ]);
 
-    return res.json({ data: posts.map(serializePost), total, page, limit });
+    return res.json({ data: await Promise.all(posts.map(serializePost)), total, page, limit });
   }),
 );
 
@@ -59,7 +59,7 @@ router.get(
     });
 
     return res.status(200).json({
-      data: posts.map(serializePost),
+      data: await Promise.all(posts.map(serializePost)),
     });
   }),
 );
@@ -82,7 +82,7 @@ router.get(
       return res.status(404).json({ error: "Post not found" });
     }
 
-    res.json({ data: serializePost(post) });
+    res.json({ data: await serializePost(post) });
   }),
 );
 
@@ -101,7 +101,7 @@ router.get(
       return res.status(404).json({ error: "Post not found" });
     }
 
-    res.json({ data: serializePost(post) });
+    res.json({ data: await serializePost(post) });
   }),
 );
 
@@ -133,7 +133,7 @@ router.post(
       include: postInclude,
     });
 
-    res.status(201).json({ data: serializePost(post) });
+    res.status(201).json({ data: await serializePost(post) });
   }),
 );
 
@@ -172,7 +172,7 @@ router.patch(
       throw err;
     }
 
-    res.status(200).json({ data: serializePost(post) });
+    res.status(200).json({ data: await serializePost(post) });
   }),
 );
 

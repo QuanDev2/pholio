@@ -5,9 +5,10 @@ import { updatePhotoCaption, deletePhoto } from "../../lib/postsApi";
 
 /**
  * The post's saved photos — the durable counterpart to PhotoUploadZone. Reads
- * the post's own `photos` (already loaded with the post), badges any the Week 6
- * worker hasn't processed yet (`status: 'pending'`), and lets the owner edit a
- * photo's caption inline. This is the pool Week 7's inline-embed picker draws from.
+ * the post's own `photos` (already loaded with the post) and lets the owner edit
+ * a photo's caption inline. This is the pool Week 7's inline-embed picker draws
+ * from. (Processing status is deliberately not surfaced — resizing is the Week 6
+ * worker's concern, not something the UI exposes.)
  *
  * Laid out as a horizontal filmstrip: a single scrolling row of small fixed-size
  * thumbnails, so the staging area keeps a constant height and never pushes the
@@ -60,11 +61,6 @@ export default function PhotoTray({ postId, photos }: { postId: string; photos: 
         <div key={photo.id} className="flex w-28 shrink-0 flex-col gap-1.5">
           <div className="relative aspect-square w-full overflow-hidden rounded-md">
             <img src={photo.url} alt={photo.caption ?? ""} className="h-full w-full object-cover" />
-            {photo.status === "pending" && (
-              <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                Pending
-              </span>
-            )}
             <button
               type="button"
               onClick={() => deleteMutation.mutate(photo.id)}

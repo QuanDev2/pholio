@@ -13,7 +13,7 @@ import { authenticate } from "../middleware/authenticate";
 import { randomUUID } from "crypto";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3 } from "../lib/s3";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { uploadUrlSchema, registerPhotoSchema, updatePhotoSchema } from "../schemas/photo";
 import z from "zod";
 
@@ -255,15 +255,30 @@ router.patch(
   }),
 );
 
+// DELETE /posts/:id/photos/:photoId → remove a photo from S3 and the DB.
+// Ownership via the parent post; the photo is scoped to that post so you can't
+// delete another post's photo through a post you happen to own.
 router.delete(
   "/:id/photos/:photoId",
   authenticate,
   asyncHandler(async (req, res) => {
-    res.json({
-      message: "delete photo stub",
-      postId: req.params.id,
-      photoId: req.params.photoId,
-    });
+    const { id: postId, photoId } = req.params;
+    await assertOwnsPost(postId, req.user!.id);
+
+    const photo = await prisma.photo.findFirst({ where: { id: photoId, postId } });
+    if (!photo) {
+      return res.status(404).json({ error: "Photo not found" });
+    }
+
+    // S3 before DB so a row never points at a deleted object; DeleteObject is
+    // idempotent, so a retry is safe. Week 6: also delete the WebP variant keys
+    // (thumbnail/medium/full) here once the worker produces them.
+    await s3.send(
+      new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME, Key: photo.key }),
+    );
+    await prisma.photo.delete({ where: { id: photoId } });
+
+    res.status(204).end();
   }),
 );
 

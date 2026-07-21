@@ -51,3 +51,11 @@ export async function updatePhotoCaption(postId: string, photoId: string, captio
 
   return res.data.data;
 }
+
+/**
+ * Delete a photo from S3 and the DB. Scoped to the post on the server. Returns
+ * nothing (204).
+ */
+export async function deletePhoto(postId: string, photoId: string) {
+  await api.delete(`/posts/${postId}/photos/${photoId}`);
+}

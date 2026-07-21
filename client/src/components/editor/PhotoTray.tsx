@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Photo } from "../../types";
-import { updatePhotoCaption } from "../../lib/postsApi";
+import { updatePhotoCaption, deletePhoto } from "../../lib/postsApi";
 
 /**
  * The post's saved photos — the durable counterpart to PhotoUploadZone. Reads
@@ -25,6 +25,11 @@ export default function PhotoTray({ postId, photos }: { postId: string; photos: 
   const mutation = useMutation({
     mutationFn: ({ photoId, caption }: { photoId: string; caption: string }) =>
       updatePhotoCaption(postId, photoId, caption),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["post", postId] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (photoId: string) => deletePhoto(postId, photoId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["post", postId] }),
   });
 
@@ -60,6 +65,15 @@ export default function PhotoTray({ postId, photos }: { postId: string; photos: 
                 Pending
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => deleteMutation.mutate(photo.id)}
+              disabled={deleteMutation.isPending}
+              aria-label="Delete photo"
+              className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 pb-0.5 text-2xl leading-none text-white hover:bg-black/80 disabled:opacity-50"
+            >
+              ×
+            </button>
           </div>
 
           {editingId === photo.id ? (

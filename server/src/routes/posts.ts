@@ -213,7 +213,7 @@ router.post(
       // Deliberately NO S3 cleanup here: the key isn't ours to delete. It may
       // be another post's legitimate object, and this request is exactly the
       // "user claims someone else's key" case the guard exists to stop.
-      return res.status(400).json({ error: "Key does not belong to this post" });
+      throw new AppError(400, "Key does not belong to this post");
     }
 
     // The bytes are ALREADY in S3 by the time we get here (the client PUT them
@@ -277,7 +277,7 @@ router.patch(
     });
 
     if (count === 0) {
-      return res.status(404).json({ error: "Photo not found" });
+      throw new AppError(404, "Photo not found");
     }
 
     const photo = await prisma.photo.findUnique({ where: { id: photoId } });
@@ -297,7 +297,7 @@ router.delete(
 
     const photo = await prisma.photo.findFirst({ where: { id: photoId, postId } });
     if (!photo) {
-      return res.status(404).json({ error: "Photo not found" });
+      throw new AppError(404, "Photo not found");
     }
 
     // S3 before DB so a row never points at a deleted object; DeleteObject is

@@ -15,6 +15,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3 } from "../lib/s3";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { uploadUrlSchema, registerPhotoSchema, updatePhotoSchema } from "../schemas/photo";
+import { AppError } from "../middleware/errorHandler";
 import z from "zod";
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
@@ -209,17 +210,46 @@ router.post(
     // reject anything outside this post's prefix — a user can't claim an
     // arbitrary S3 object (or one belonging to another post).
     if (!key.startsWith(`photos/${postId}/`)) {
+      // Deliberately NO S3 cleanup here: the key isn't ours to delete. It may
+      // be another post's legitimate object, and this request is exactly the
+      // "user claims someone else's key" case the guard exists to stop.
       return res.status(400).json({ error: "Key does not belong to this post" });
     }
 
-    const photo = await prisma.photo.create({
-      data: {
-        postId,
-        key,
-        caption,
-        status: "pending",
-      },
-    });
+    // The bytes are ALREADY in S3 by the time we get here (the client PUT them
+    // to the presigned URL). If this insert fails, the object is orphaned —
+    // nothing in the DB points at it, so no delete path will ever reach it and
+    // we pay to store it forever. Undo the half-completed operation.
+    let photo;
+    try {
+      photo = await prisma.photo.create({
+        data: {
+          postId,
+          key,
+          caption,
+          status: "pending",
+        },
+      });
+    } catch (err) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME, Key: key }),
+        );
+      } catch (cleanupErr) {
+        // Best-effort: if cleanup ALSO fails, log it and still surface the
+        // original DB error. Letting this one propagate would replace the real
+        // cause with a misleading S3 error. Worst case is one orphaned object.
+        console.error("Orphaned S3 object — cleanup failed for key:", key, cleanupErr);
+      }
+
+      // The post disappeared between assertOwnsPost and here (FK violation) —
+      // a real race, and an operational one, so it gets a clean message rather
+      // than the opaque 500 an unexpected error would produce.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+        throw new AppError(404, "Post not found");
+      }
+      throw err;
+    }
 
     res.status(201).json({ data: photo });
   }),

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, type FileRejection } from "react-dropzone";
 import UploadItem from "./UploadItem";
 
 export type PendingUpload = { id: string; file: File; previewUrl: string };
@@ -13,8 +13,13 @@ export type PendingUpload = { id: string; file: File; previewUrl: string };
  */
 export default function PhotoUploadZone({ postId }: { postId: string }) {
   const [pending, setPending] = useState<PendingUpload[]>([]);
+  const [refused, setRefused] = useState<string[]>([]);
 
-  const onDrop = useCallback((accepted: File[]) => {
+  // react-dropzone filters the drop against `accept` and hands the failures to
+  // the SECOND argument. Those files never become an UploadItem, so without
+  // this they'd disappear with no explanation — a silent failure.
+  const onDrop = useCallback((accepted: File[], rejections: FileRejection[]) => {
+    setRefused(rejections.map((r) => r.file.name));
     setPending((prev) => [
       ...prev,
       ...accepted.map((file) => ({
@@ -55,6 +60,23 @@ export default function PhotoUploadZone({ postId }: { postId: string }) {
           </>
         )}
       </div>
+
+      {refused.length > 0 && (
+        <div className="flex items-start gap-2 rounded-md bg-rose-50 p-3 text-sm text-rose-800">
+          <p className="min-w-0 flex-1">
+            Only JPEG, PNG and WebP images are supported. Skipped:{" "}
+            <span className="break-words font-medium">{refused.join(", ")}</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setRefused([])}
+            aria-label="Dismiss"
+            className="-m-2 shrink-0 p-2 leading-none text-rose-500 hover:text-rose-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* In-flight previews as the same small filmstrip as the saved tray, so a
           finished upload doesn't visibly jump from a big tile to a small one. */}

@@ -14,7 +14,9 @@ type Props = {
  * One in-flight upload. Rendered per dropped file (see PhotoUploadZone), so each
  * file gets its own useUpload instance and they upload in parallel. Drives the
  * full flow on mount: PUT to S3 → register the DB row → refresh the tray → hand
- * back to the parent to remove itself. On any failure it stays put with a retry.
+ * back to the parent to remove itself. On a transient failure it stays put with
+ * a retry; on a rejection (bad type / too big) retrying is pointless, so the
+ * overlay offers Dismiss instead.
  */
 export default function UploadItem({ postId, file, previewUrl, onDone }: Props) {
   const { upload, progress, status, error, reset } = useUpload();
@@ -54,6 +56,16 @@ export default function UploadItem({ postId, file, previewUrl, onDone }: Props) 
     void run();
   };
 
+  // The file was never acceptable (bad type / too big), so there is nothing to
+  // retry — the only move is to drop the tile. Revoke here too: the success path
+  // does it in run(), but a file that never uploads would otherwise hold its
+  // blob in memory until the page unloads.
+  const dismiss = () => {
+    URL.revokeObjectURL(previewUrl);
+    onDone();
+  };
+
+  const rejected = status === "rejected";
   const failed = status === "error" || registerError !== null;
 
   return (
@@ -71,14 +83,16 @@ export default function UploadItem({ postId, file, previewUrl, onDone }: Props) 
         </div>
       )}
 
-      {failed && (
+      {(failed || rejected) && (
         <button
           type="button"
-          onClick={retry}
-          className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 p-2 text-center text-xs text-white"
+          onClick={rejected ? dismiss : retry}
+          // min-h-11 keeps the tap target at the ~44px touch minimum even though
+          // the tile is small; the message can wrap to two lines on a phone.
+          className="absolute inset-0 flex min-h-11 flex-col items-center justify-center gap-1 bg-black/70 p-1.5 text-center text-[11px] leading-tight text-white"
         >
-          <span>{error ?? registerError}</span>
-          <span className="font-medium underline">Retry</span>
+          <span className="line-clamp-3">{error ?? registerError}</span>
+          <span className="font-medium underline">{rejected ? "Dismiss" : "Retry"}</span>
         </button>
       )}
     </div>

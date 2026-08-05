@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import type { HttpError } from "../middleware/errorHandler";
+import { AppError } from "../middleware/errorHandler";
 
 // Throws 404 if the post doesn't exist, 403 if `userId` isn't its author.
 // Returns the (lean) post so the caller can skip a second fetch.
@@ -10,15 +10,11 @@ export async function assertOwnsPost(postId: string, userId: string) {
   });
 
   if (!post) {
-    const err: HttpError = new Error("Post not found");
-    err.status = 404;
-    throw err;
+    throw new AppError(404, "Post not found");
   }
 
   if (post.authorId !== userId) {
-    const err: HttpError = new Error("Forbidden");
-    err.status = 403;
-    throw err;
+    throw new AppError(403, "Forbidden");
   }
 
   return post;

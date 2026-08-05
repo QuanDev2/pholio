@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import type { HttpError } from "../middleware/errorHandler";
+import { AppError } from "../middleware/errorHandler";
 
 // Throws a 400 (caught by the global error handler via asyncHandler's
 // .catch(next)) if any id in `tags` doesn't match an existing Tag.
@@ -10,8 +10,6 @@ export async function assertTagsExist(tags: string[]): Promise<void> {
   });
 
   if (found.length !== tags.length) {
-    const err: HttpError = new Error("unknown tag");
-    err.status = 400;
-    throw err;
+    throw new AppError(400, "unknown tag");
   }
 }

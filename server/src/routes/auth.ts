@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import { signAccessToken } from "../lib/jwt";
 import { issueRefreshToken, setRefreshCookie } from "../lib/refreshToken";
 import { authenticate } from "../middleware/authenticate";
+import { AppError } from "../middleware/errorHandler";
 
 const router = Router();
 
@@ -18,12 +19,12 @@ router.post(
 
     const existingEmail = await prisma.user.findUnique({ where: { email } });
     if (existingEmail) {
-      return res.status(409).json({ error: "Email already exists" });
+      throw new AppError(409, "Email already exists");
     }
 
     const existingUsername = await prisma.user.findUnique({ where: { username } });
     if (existingUsername) {
-      return res.status(409).json({ error: "Username already exists" });
+      throw new AppError(409, "Username already exists");
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -49,12 +50,12 @@ router.post(
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      throw new AppError(401, "Invalid credentials");
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      throw new AppError(401, "Invalid credentials");
     }
 
     const { password: _, ...safeUser } = user;
@@ -72,20 +73,20 @@ router.post(
   asyncHandler(async (req, res) => {
     const token = req.cookies.refreshToken; // populated by cookie-parser
     if (!token) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      throw new AppError(401, "Invalid credentials");
     }
 
     const stored = await prisma.refreshToken.findUnique({ where: { token } });
 
     // token is old, possibly a theft
     if (!stored) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      throw new AppError(401, "Invalid credentials");
     }
 
     // if token is valid but already expired, delete it, force a re-login
     if (stored.expiresAt < new Date()) {
       await prisma.refreshToken.delete({ where: { token } });
-      return res.status(401).json({ error: "Invalid credentials" });
+      throw new AppError(401, "Invalid credentials");
     }
 
     // rotating token: delete old + issue new atomically. If issue fails after the
@@ -125,7 +126,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      throw new AppError(404, "User not found");
     }
 
     const { password: _, ...safeUser } = user;

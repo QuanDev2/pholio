@@ -80,7 +80,7 @@ router.get(
     });
 
     if (!post) {
-      return res.status(404).json({ error: "Post not found" });
+      throw new AppError(404, "Post not found");
     }
 
     res.json({ data: await serializePost(post) });
@@ -99,7 +99,7 @@ router.get(
     });
 
     if (!post) {
-      return res.status(404).json({ error: "Post not found" });
+      throw new AppError(404, "Post not found");
     }
 
     res.json({ data: await serializePost(post) });
@@ -168,7 +168,7 @@ router.patch(
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
-        return res.status(404).json({ error: "Post not found" });
+        throw new AppError(404, "Post not found");
       }
       throw err;
     }

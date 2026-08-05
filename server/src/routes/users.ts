@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { prisma } from "../lib/prisma";
 import { serializePost, postInclude } from "../lib/serializers";
+import { AppError } from "../middleware/errorHandler";
 
 // Mounted at /users in app.ts.
 const router = Router();
@@ -15,7 +16,7 @@ router.get(
     const author = await prisma.user.findUnique({ where: { username } });
 
     if (!author) {
-      return res.status(404).json({ error: "User not found" });
+      throw new AppError(404, "User not found");
     }
 
     const page = Number(req.query.page) || 1;

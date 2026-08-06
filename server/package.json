@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "worker": "tsx watch src/workers/imageProcessing.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",

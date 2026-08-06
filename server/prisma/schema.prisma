@@ -55,8 +55,7 @@ model Photo {
   post      Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
   status    PhotoStatus @default(pending)
 
-  // WebP variants produced by the image-processing worker (Week 6). Null until
-  // the worker finishes and sets status: ready. Keyed photos/{postId}/{photoId}/{size}.webp.
+  // WebP variants from the worker; null until status: ready.
   thumbnailUrl String?
   mediumUrl    String?
   fullUrl      String?

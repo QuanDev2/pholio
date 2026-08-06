@@ -16,6 +16,7 @@ import { s3 } from "../lib/s3";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { uploadUrlSchema, registerPhotoSchema, updatePhotoSchema } from "../schemas/photo";
 import { AppError } from "../middleware/errorHandler";
+import { imageProcessingQueue } from "../queues/imageProcessing";
 import z from "zod";
 
 // Mounted at /posts in app.ts — paths here are RELATIVE to that prefix.
@@ -250,6 +251,13 @@ router.post(
       }
       throw err;
     }
+
+    // Awaited so a broker outage 500s instead of orphaning a `pending` photo.
+    await imageProcessingQueue.add(
+      "process-image",
+      { photoId: photo.id, postId, key },
+      { attempts: 3, backoff: { type: "exponential", delay: 1000 } },
+    );
 
     res.status(201).json({ data: photo });
   }),

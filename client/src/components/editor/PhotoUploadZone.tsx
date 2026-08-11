@@ -1,17 +1,21 @@
 import { useCallback, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
+import type { Photo } from "../../types";
 import UploadItem from "./UploadItem";
+import SavedPhotoTile from "./SavedPhotoTile";
 
 export type PendingUpload = { id: string; file: File; previewUrl: string };
 
 /**
- * The drag-and-drop upload area inside the editor. On drop, each file becomes a
- * PendingUpload with an instant local objectURL preview, then renders as an
- * UploadItem — one useUpload instance each, so drops upload to S3 in parallel.
- * An item removes itself (onDone) once it's uploaded, registered, and folded
- * into the saved-photo tray.
+ * The editor's photo section: a drag-and-drop area above a single filmstrip that
+ * holds the post's saved photos AND any in-flight uploads together. On drop, each
+ * file becomes a PendingUpload with an instant local objectURL preview and renders
+ * as an UploadItem (one useUpload instance each → parallel S3 uploads) at the end
+ * of the strip. Once uploaded + registered, the item removes itself and the
+ * refetched photo takes its place as a SavedPhotoTile — one continuous row, no
+ * jump between a separate "uploading" area and a separate "saved" area.
  */
-export default function PhotoUploadZone({ postId }: { postId: string }) {
+export default function PhotoUploadZone({ postId, photos }: { postId: string; photos: Photo[] }) {
   const [pending, setPending] = useState<PendingUpload[]>([]);
   const [refused, setRefused] = useState<string[]>([]);
 
@@ -78,10 +82,14 @@ export default function PhotoUploadZone({ postId }: { postId: string }) {
         </div>
       )}
 
-      {/* In-flight previews as the same small filmstrip as the saved tray, so a
-          finished upload doesn't visibly jump from a big tile to a small one. */}
-      {pending.length > 0 && (
+      {/* One strip: saved photos first, then in-flight uploads at the end (the
+          newest, matching createdAt order). When an upload registers, its tile
+          self-removes and the refetched photo appears in the same spot. */}
+      {(photos.length > 0 || pending.length > 0) && (
         <div className="flex gap-3 overflow-x-auto pb-2">
+          {photos.map((photo) => (
+            <SavedPhotoTile key={photo.id} postId={postId} photo={photo} />
+          ))}
           {pending.map((item) => (
             <div key={item.id} className="w-28 shrink-0">
               <UploadItem

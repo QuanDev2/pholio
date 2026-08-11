@@ -16,7 +16,15 @@
       "Bash(./node_modules/.bin/eslint src/routes/auth.ts)",
       "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" rtk proxy npx prisma migrate reset --force)",
       "Bash(npm install *)",
-      "Bash(echo \"--- tsc exit: $? ---\")"
+      "Bash(echo \"--- tsc exit: $? ---\")",
+      "Bash(node -e \"console.log\\('tsup:', require\\('./node_modules/tsup/package.json'\\).version\\)\")",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(echo \"--- exit: $? \\(1 = no matches\\) ---\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('bullmq:', p.dependencies.bullmq\\); console.log\\('ioredis:', p.dependencies.ioredis\\)\")",
+      "WebFetch(domain:docs.bullmq.io)",
+      "Bash(echo \"---exit: $?---\")"
     ],
     "additionalDirectories": [
       "/Users/quandev/.claude/commands"

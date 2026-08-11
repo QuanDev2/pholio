@@ -33,6 +33,17 @@ export const postInclude = {
 // Generic over the post shape: it accepts anything that has `tags: { name }[]`
 // and returns the same object with `tags` replaced by string[], preserving every
 // other field (photos, author, etc.) regardless of what was included.
+// Signs a private-bucket key into a 1h GET URL, or passes through null for keys
+// that don't exist yet (a pending photo has no variants until the worker runs).
+async function signKey(key: string | null): Promise<string | null> {
+  if (!key) return null;
+  return getSignedUrl(
+    s3,
+    new GetObjectCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME, Key: key }),
+    { expiresIn: 3600 },
+  );
+}
+
 export async function serializePost<T extends { tags: { name: string }[]; photos: Photo[] }>(
   post: T,
 ) {
@@ -41,14 +52,15 @@ export async function serializePost<T extends { tags: { name: string }[]; photos
     // The bucket is private, so a raw S3 URL would 403. Sign a short-lived GET
     // URL per photo instead — the signature (in the query string) is the
     // credential, valid for an hour, long enough to outlive any page view.
+    // `url` is the original; the three variant fields hold the worker's WebP
+    // keys (null until status: ready) and get signed the same way.
     photos: await Promise.all(
       post.photos.map(async (photo) => ({
         ...photo,
-        url: await getSignedUrl(
-          s3,
-          new GetObjectCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME, Key: photo.key }),
-          { expiresIn: 3600 },
-        ),
+        url: (await signKey(photo.key))!, // original always exists
+        thumbnailUrl: await signKey(photo.thumbnailUrl),
+        mediumUrl: await signKey(photo.mediumUrl),
+        fullUrl: await signKey(photo.fullUrl),
       })),
     ),
     tags: post.tags.map((tag) => tag.name),

@@ -4,6 +4,7 @@ import { Redis } from "ioredis";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 import { s3 } from "../lib/s3";
+import { prisma } from "../lib/prisma";
 import { VARIANTS, variantKey } from "../lib/photoKeys";
 import { IMAGE_PROCESSING_QUEUE } from "../queues/names";
 
@@ -49,6 +50,19 @@ const worker = new Worker(
         ),
       ),
     );
+
+    // 4. Record the result: store the variant keys and flip the photo to ready.
+    // Keys (not signed URLs) — serializePost signs them per-request on read, so
+    // nothing stored in the DB expires. Setting absolute final state = idempotent.
+    await prisma.photo.update({
+      where: { id: photoId },
+      data: {
+        thumbnailUrl: variantKey(postId, photoId, "thumbnail"),
+        mediumUrl: variantKey(postId, photoId, "medium"),
+        fullUrl: variantKey(postId, photoId, "full"),
+        status: "ready",
+      },
+    });
 
     console.log("[image-processing] done", job.id, `photos/${postId}/${photoId}/`);
   },

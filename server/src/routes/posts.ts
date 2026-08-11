@@ -13,7 +13,8 @@ import { authenticate } from "../middleware/authenticate";
 import { randomUUID } from "crypto";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3 } from "../lib/s3";
-import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { variantKeys } from "../lib/photoKeys";
 import { uploadUrlSchema, registerPhotoSchema, updatePhotoSchema } from "../schemas/photo";
 import { AppError } from "../middleware/errorHandler";
 import { imageProcessingQueue } from "../queues/imageProcessing";
@@ -308,11 +309,15 @@ router.delete(
       throw new AppError(404, "Photo not found");
     }
 
-    // S3 before DB so a row never points at a deleted object; DeleteObject is
-    // idempotent, so a retry is safe. Week 6: also delete the WebP variant keys
-    // (thumbnail/medium/full) here once the worker produces them.
+    // S3 before DB so a row never points at a deleted object. Delete the
+    // original + the 3 WebP variants in one batch; delete is idempotent, so
+    // variants that don't exist yet (photo still pending) are harmless.
+    const keys = [photo.key, ...variantKeys(postId, photoId)];
     await s3.send(
-      new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME, Key: photo.key }),
+      new DeleteObjectsCommand({
+        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Delete: { Objects: keys.map((Key) => ({ Key })) },
+      }),
     );
     await prisma.photo.delete({ where: { id: photoId } });
 

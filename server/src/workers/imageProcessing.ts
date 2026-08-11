@@ -4,21 +4,11 @@ import { Redis } from "ioredis";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 import { s3 } from "../lib/s3";
+import { VARIANTS, variantKey } from "../lib/photoKeys";
 import { IMAGE_PROCESSING_QUEUE } from "../queues/names";
 
 // Payload the producer enqueues on POST /posts/:id/photos.
 type ImageJobData = { photoId: string; postId: string; key: string };
-
-// The 3 WebP sizes the worker produces. width: null = re-encode at original dims.
-const VARIANTS = [
-  { name: "thumbnail", width: 400 },
-  { name: "medium", width: 1200 },
-  { name: "full", width: null },
-] as const;
-
-// S3 key for a variant: photos/{postId}/{photoId}/{name}.webp
-const variantKey = (postId: string, photoId: string, name: string) =>
-  `photos/${postId}/${photoId}/${name}.webp`;
 
 // Workers need their own connection with maxRetriesPerRequest: null.
 const connection = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {

@@ -1,4 +1,4 @@
-# File Index — generated 2026-07-21
+# File Index — generated 2026-08-11
 
 ### src/
 - `App.tsx` — App (default)
@@ -23,8 +23,8 @@
 ### src/components/editor/
 - `Editor.tsx` — Editor (default)
 - `NewPostRedirect.tsx` — NewPostRedirect (default)
-- `PhotoTray.tsx` — PhotoTray (default)
 - `PhotoUploadZone.tsx` — PhotoUploadZone (default), PendingUpload
+- `SavedPhotoTile.tsx` — SavedPhotoTile (default)
 - `UploadItem.tsx` — UploadItem (default)
 
 ### src/components/posts/
@@ -39,7 +39,7 @@
 
 ### src/hooks/
 - `usePostFilter.ts` — usePostFilter (default)
-- `useUpload.ts` — useUpload (default)
+- `useUpload.ts` — useUpload (default), validateFile
 
 ### src/lib/
 - `apiClient.ts` — api

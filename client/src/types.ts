@@ -9,6 +9,7 @@ export interface Photo {
   mediumUrl: string | null;
   fullUrl: string | null;
   status: PhotoStatus; // server-owned; Week 6's worker drives pending -> ready
+  position: number; // display order within the post; assigned client-side at upload
   caption?: string;
   metaData?: PhotoMetaData;
 }

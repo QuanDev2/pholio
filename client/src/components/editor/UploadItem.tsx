@@ -7,6 +7,7 @@ type Props = {
   postId: string;
   file: File;
   previewUrl: string;
+  position: number;
   onDone: () => void;
 };
 
@@ -18,7 +19,7 @@ type Props = {
  * a retry; on a rejection (bad type / too big) retrying is pointless, so the
  * overlay offers Dismiss instead.
  */
-export default function UploadItem({ postId, file, previewUrl, onDone }: Props) {
+export default function UploadItem({ postId, file, previewUrl, position, onDone }: Props) {
   const { upload, progress, status, error, reset } = useUpload();
   const [registerError, setRegisterError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -30,7 +31,7 @@ export default function UploadItem({ postId, file, previewUrl, onDone }: Props) 
     if (!key) return; // upload failed — useUpload already set status:error
 
     try {
-      await registerPhoto(postId, key);
+      await registerPhoto(postId, key, position);
     } catch {
       setRegisterError("Could not save photo");
       return;
@@ -40,7 +41,7 @@ export default function UploadItem({ postId, file, previewUrl, onDone }: Props) 
     queryClient.invalidateQueries({ queryKey: ["post", postId] });
     URL.revokeObjectURL(previewUrl);
     onDone();
-  }, [upload, postId, file, previewUrl, onDone, queryClient]);
+  }, [upload, postId, file, previewUrl, position, onDone, queryClient]);
 
   // Fire once. The ref latch keeps StrictMode's double-mount (and re-runs from
   // run's identity changing) from double-uploading.

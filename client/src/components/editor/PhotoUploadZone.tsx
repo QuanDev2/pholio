@@ -4,7 +4,7 @@ import type { Photo } from "../../types";
 import UploadItem from "./UploadItem";
 import SavedPhotoTile from "./SavedPhotoTile";
 
-export type PendingUpload = { id: string; file: File; previewUrl: string };
+export type PendingUpload = { id: string; file: File; previewUrl: string; position: number };
 
 /**
  * The editor's photo section: a drag-and-drop area above a single filmstrip that
@@ -22,17 +22,28 @@ export default function PhotoUploadZone({ postId, photos }: { postId: string; ph
   // react-dropzone filters the drop against `accept` and hands the failures to
   // the SECOND argument. Those files never become an UploadItem, so without
   // this they'd disappear with no explanation — a silent failure.
-  const onDrop = useCallback((accepted: File[], rejections: FileRejection[]) => {
-    setRefused(rejections.map((r) => r.file.name));
-    setPending((prev) => [
-      ...prev,
-      ...accepted.map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        previewUrl: URL.createObjectURL(file),
-      })),
-    ]);
-  }, []);
+  const onDrop = useCallback(
+    (accepted: File[], rejections: FileRejection[]) => {
+      setRefused(rejections.map((r) => r.file.name));
+      setPending((prev) => {
+        // Assign positions above everything already here (saved + in-flight), in
+        // drop order — so this batch lands at the end of the strip and keeps its
+        // order regardless of which upload finishes first.
+        const taken = [...photos.map((p) => p.position), ...prev.map((p) => p.position)];
+        const base = taken.length ? Math.max(...taken) + 1 : 0;
+        return [
+          ...prev,
+          ...accepted.map((file, i) => ({
+            id: crypto.randomUUID(),
+            file,
+            previewUrl: URL.createObjectURL(file),
+            position: base + i,
+          })),
+        ];
+      });
+    },
+    [photos],
+  );
 
   const removePending = useCallback((id: string) => {
     setPending((prev) => prev.filter((item) => item.id !== id));
@@ -42,6 +53,12 @@ export default function PhotoUploadZone({ postId, photos }: { postId: string; ph
     onDrop,
     accept: { "image/jpeg": [], "image/png": [], "image/webp": [] },
   });
+
+  // Saved photos and in-flight uploads as one list, ordered by position.
+  const strip = [
+    ...photos.map((photo) => ({ kind: "saved" as const, position: photo.position, photo })),
+    ...pending.map((upload) => ({ kind: "pending" as const, position: upload.position, upload })),
+  ].sort((a, b) => a.position - b.position);
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,24 +99,28 @@ export default function PhotoUploadZone({ postId, photos }: { postId: string; ph
         </div>
       )}
 
-      {/* One strip: saved photos first, then in-flight uploads at the end (the
-          newest, matching createdAt order). When an upload registers, its tile
-          self-removes and the refetched photo appears in the same spot. */}
-      {(photos.length > 0 || pending.length > 0) && (
+      {/* One strip, saved photos and in-flight uploads interleaved by position so
+          the order is stable even mid-upload (a photo that registers first can't
+          jump ahead of a lower-positioned sibling still uploading). When an
+          upload registers, its tile self-removes and the refetched photo takes
+          the same slot. */}
+      {strip.length > 0 && (
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {photos.map((photo) => (
-            <SavedPhotoTile key={photo.id} postId={postId} photo={photo} />
-          ))}
-          {pending.map((item) => (
-            <div key={item.id} className="w-28 shrink-0">
-              <UploadItem
-                postId={postId}
-                file={item.file}
-                previewUrl={item.previewUrl}
-                onDone={() => removePending(item.id)}
-              />
-            </div>
-          ))}
+          {strip.map((item) =>
+            item.kind === "saved" ? (
+              <SavedPhotoTile key={item.photo.id} postId={postId} photo={item.photo} />
+            ) : (
+              <div key={item.upload.id} className="w-28 shrink-0">
+                <UploadItem
+                  postId={postId}
+                  file={item.upload.file}
+                  previewUrl={item.upload.previewUrl}
+                  position={item.upload.position}
+                  onDone={() => removePending(item.upload.id)}
+                />
+              </div>
+            ),
+          )}
         </div>
       )}
     </div>

@@ -205,7 +205,7 @@ router.post(
     const postId = req.params.id;
     await assertOwnsPost(postId, req.user!.id);
 
-    const { key, caption } = req.body as z.infer<typeof registerPhotoSchema>;
+    const { key, caption, position } = req.body as z.infer<typeof registerPhotoSchema>;
 
     // Trust boundary: the client hands back a key, but could send any string.
     // Our upload-url endpoint only ever signs keys under photos/{postId}/, so
@@ -229,6 +229,7 @@ router.post(
           postId,
           key,
           caption,
+          position,
           status: "pending",
         },
       });

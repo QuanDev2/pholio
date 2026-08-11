@@ -10,6 +10,9 @@ export const uploadUrlSchema = z.object({
 export const registerPhotoSchema = z.object({
   key: z.string().min(1),
   caption: z.string().max(500).optional(),
+  // Client-assigned display order (it knows drop order). Server just stores it,
+  // so parallel registration can't race a server-side count.
+  position: z.number().int().min(0),
 });
 
 // Body for PATCH /posts/:id/photos/:photoId — edits an existing photo. Only the

@@ -55,6 +55,12 @@ model Photo {
   post      Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
   status    PhotoStatus @default(pending)
 
+  // Display order within the post. Assigned client-side at upload (the client
+  // knows drop order) — the server only stores it, so parallel registration
+  // can't race the way a server-side count(+1) would. createdAt is unreliable
+  // for order because parallel uploads register in completion order.
+  position Int @default(0)
+
   // WebP variants from the worker; null until status: ready.
   thumbnailUrl String?
   mediumUrl    String?

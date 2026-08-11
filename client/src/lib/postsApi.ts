@@ -32,11 +32,12 @@ export async function getPost(id: string) {
 
 /**
  * Register an already-uploaded S3 object as a Photo on the post. Called after
- * the file has been PUT to S3 (via useUpload), passing back the S3 `key`. The
- * server sets status:'pending' and owns ordering (createdAt).
+ * the file has been PUT to S3 (via useUpload), passing back the S3 `key` and the
+ * client-assigned `position` (display order — the client knows drop order; the
+ * server just stores it). The server sets status:'pending'.
  */
-export async function registerPhoto(postId: string, key: string) {
-  const res = await api.post<PhotoResponse>(`/posts/${postId}/photos`, { key });
+export async function registerPhoto(postId: string, key: string, position: number) {
+  const res = await api.post<PhotoResponse>(`/posts/${postId}/photos`, { key, position });
 
   return res.data.data;
 }

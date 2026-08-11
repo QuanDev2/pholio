@@ -13,7 +13,7 @@ import { s3 } from "./s3";
 // return shape — without it, the relations would widen and serializePost would
 // lose its types.
 export const postInclude = {
-  photos: { orderBy: { createdAt: "asc" } },
+  photos: { orderBy: { position: "asc" } },
   author: {
     select: {
       id: true,

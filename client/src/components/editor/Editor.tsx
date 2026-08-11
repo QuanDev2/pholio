@@ -24,6 +24,15 @@ export default function Editor() {
     queryKey: ["post", postId],
     queryFn: () => getPost(postId!),
     enabled: Boolean(postId),
+    // Poll while any photo is still being processed by the worker, so its
+    // thumbnail appears automatically. Stop once every photo is settled
+    // (ready or error) — otherwise the frontend never learns the job finished.
+    refetchInterval: (query) => {
+      const unsettled = query.state.data?.photos.some(
+        (p) => p.status === "pending" || p.status === "processing",
+      );
+      return unsettled ? 2000 : false;
+    },
   });
 
   // Local, uncontrolled-by-server title state. Seeded once the post loads.

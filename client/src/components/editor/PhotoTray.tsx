@@ -7,8 +7,8 @@ import { updatePhotoCaption, deletePhoto } from "../../lib/postsApi";
  * The post's saved photos — the durable counterpart to PhotoUploadZone. Reads
  * the post's own `photos` (already loaded with the post) and lets the owner edit
  * a photo's caption inline. This is the pool Week 7's inline-embed picker draws
- * from. (Processing status is deliberately not surfaced — resizing is the Week 6
- * worker's concern, not something the UI exposes.)
+ * from. Each tile reflects worker status: a pulsing skeleton while pending/
+ * processing, the WebP thumbnail once ready, an error tile if processing failed.
  *
  * Laid out as a horizontal filmstrip: a single scrolling row of small fixed-size
  * thumbnails, so the staging area keeps a constant height and never pushes the
@@ -59,8 +59,29 @@ export default function PhotoTray({ postId, photos }: { postId: string; photos: 
     <div className="flex gap-3 overflow-x-auto pb-2">
       {photos.map((photo) => (
         <div key={photo.id} className="flex w-28 shrink-0 flex-col gap-1.5">
-          <div className="relative aspect-square w-full overflow-hidden rounded-md">
-            <img src={photo.url} alt={photo.caption ?? ""} className="h-full w-full object-cover" />
+          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-zinc-100">
+            {photo.status === "error" ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-rose-600">
+                <span className="text-lg leading-none">⚠</span>
+                <span className="text-[10px] leading-tight">Processing failed</span>
+              </div>
+            ) : (
+              <>
+                {/* Show the original right away; swap to the WebP thumbnail once ready. */}
+                <img
+                  src={photo.status === "ready" ? (photo.thumbnailUrl ?? photo.url) : photo.url}
+                  alt={photo.caption ?? ""}
+                  className="h-full w-full object-cover"
+                />
+                {/* While the worker runs, dim the original and show a spinner. */}
+                {photo.status !== "ready" && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/40">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    <span className="text-[10px] font-medium text-white">Processing…</span>
+                  </div>
+                )}
+              </>
+            )}
             <button
               type="button"
               onClick={() => deleteMutation.mutate(photo.id)}

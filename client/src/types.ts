@@ -3,7 +3,11 @@ export type PhotoStatus = "pending" | "processing" | "ready" | "error";
 export interface Photo {
   id: string;
   key: string; // s3 key
-  url: string;
+  url: string; // signed GET url for the original
+  // Signed GET urls for the worker's WebP variants; null until status: ready.
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  fullUrl: string | null;
   status: PhotoStatus; // server-owned; Week 6's worker drives pending -> ready
   caption?: string;
   metaData?: PhotoMetaData;

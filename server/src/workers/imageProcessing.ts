@@ -70,4 +70,20 @@ const worker = new Worker(
 );
 
 worker.on("ready", () => console.log("Image worker ready"));
-worker.on("failed", (job, err) => console.error("Job failed:", job?.id, err.message));
+
+// Fires on every attempt that throws. Only the LAST attempt (retries exhausted)
+// is a permanent failure — that's when we flip the photo to error so the
+// frontend stops polling. Earlier failures still have a retry coming, so we
+// leave the photo pending. The exhausted job stays in BullMQ's `failed` set
+// (the de-facto dead-letter store) for inspection.
+worker.on("failed", async (job, err) => {
+  console.error("Job failed:", job?.id, err.message);
+  if (!job || job.attemptsMade < job.opts.attempts!) return;
+
+  const { photoId } = job.data as ImageJobData;
+  try {
+    await prisma.photo.update({ where: { id: photoId }, data: { status: "error" } });
+  } catch (updateErr) {
+    console.error("Failed to mark photo errored:", photoId, updateErr);
+  }
+});

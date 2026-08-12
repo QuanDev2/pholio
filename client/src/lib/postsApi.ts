@@ -31,6 +31,16 @@ export async function getPost(id: string) {
 }
 
 /**
+ * Update a post's title and/or content (Tiptap JSON). Used by the editor's
+ * save flow — manual save today, auto-save from Week 7 Day 2.
+ */
+export async function updatePost(id: string, data: { title?: string; content?: unknown }) {
+  const res = await api.patch<PostResponse>(`/posts/${id}`, data);
+
+  return res.data.data;
+}
+
+/**
  * Register an already-uploaded S3 object as a Photo on the post. Called after
  * the file has been PUT to S3 (via useUpload), passing back the S3 `key` and the
  * client-assigned `position` (display order — the client knows drop order; the

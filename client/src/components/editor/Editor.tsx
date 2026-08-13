@@ -16,7 +16,7 @@ function EditorToolbar({ editor }: { editor: TiptapEditor }) {
     }`;
 
   return (
-    <div className="flex gap-1">
+    <div className="flex flex-wrap gap-1">
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -91,6 +91,7 @@ export default function Editor() {
   // Dirty tracking: unsaved edits exist whenever revision has moved past savedRevision.
   const [revision, setRevision] = useState(0);
   const [savedRevision, setSavedRevision] = useState(0);
+  const [failedRevision, setFailedRevision] = useState<number | null>(null);
   const markDirty = () => setRevision((r) => r + 1);
 
   // Tiptap instance, re-created per post id; every content change marks the doc dirty.
@@ -113,17 +114,29 @@ export default function Editor() {
         prev ? { ...prev, ...updated, photos: prev.photos } : updated,
       );
     },
+    onError: (_err, failedAt) => setFailedRevision(failedAt),
   });
 
   // Auto-save: the cleanup cancels the pending timer on each edit, debouncing to 2s idle.
+  // Paused while a save is in flight and after a failed one, until the next edit.
   useEffect(() => {
-    if (revision === savedRevision || isSaving) return;
+    if (revision === savedRevision || revision === failedRevision || isSaving) return;
     const timer = setTimeout(() => save(revision), 2000);
     return () => clearTimeout(timer);
-  }, [revision, savedRevision, isSaving, save]);
+  }, [revision, savedRevision, failedRevision, isSaving, save]);
+
+  // Header save state in precedence order — a failed save also reads as dirty, so it comes first.
+  const [saveStatus, saveStatusClass] = isSaving
+    ? ["Saving…", "text-zinc-500"]
+    : revision === failedRevision
+      ? ["Save failed", "text-red-600"]
+      : revision !== savedRevision
+        ? ["Unsaved", "text-amber-600"]
+        : ["Saved", "text-zinc-500"];
 
   if (isLoading) return <div className="text-zinc-500">Loading editor…</div>;
-  if (isError || !post || !editor) return <div className="text-red-600">Could not load this post.</div>;
+  if (isError || !post || !editor)
+    return <div className="text-red-600">Could not load this post.</div>;
 
   return (
     <div className="flex flex-col gap-6">
@@ -140,16 +153,21 @@ export default function Editor() {
 
       {/* Body: toolbar + manual save above the editable Tiptap surface. */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <EditorToolbar editor={editor} />
-          <button
-            type="button"
-            onClick={() => save(revision)}
-            disabled={isSaving}
-            className="rounded bg-zinc-900 px-3 py-1 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-          >
-            {isSaving ? "Saving…" : "Save"}
-          </button>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm ${saveStatusClass}`} aria-live="polite">
+              {saveStatus}
+            </span>
+            <button
+              type="button"
+              onClick={() => save(revision)}
+              disabled={isSaving}
+              className="rounded bg-zinc-900 px-3 py-1 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+            >
+              Save
+            </button>
+          </div>
         </div>
         <EditorContent
           editor={editor}

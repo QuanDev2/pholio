@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
@@ -83,10 +83,15 @@ export default function Editor() {
     },
   });
 
-  // Local, uncontrolled-by-server title state. Seeded once the post loads.
+  // Seed the title once per post, keyed on id like the editor below — a poll
+  // refetch hands back a new post object and would otherwise overwrite typing.
   const [title, setTitle] = useState("");
+  const seededPostId = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (post) setTitle(post.title);
+    if (post && seededPostId.current !== post.id) {
+      seededPostId.current = post.id;
+      setTitle(post.title);
+    }
   }, [post]);
 
   // Deps on post?.id so the editor re-initializes with the right content when

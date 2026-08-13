@@ -5,9 +5,10 @@ import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/r
 import StarterKit from "@tiptap/starter-kit";
 import type { JSONContent } from "@tiptap/core";
 import { getPost, updatePost } from "../../lib/postsApi";
+import type { Post } from "../../types";
 import PhotoUploadZone from "./PhotoUploadZone";
 
-/** Minimal formatting toolbar — bold/italic, headings, lists. */
+// Formatting controls — each button toggles a mark/node and highlights when active.
 function EditorToolbar({ editor }: { editor: TiptapEditor }) {
   const buttonClass = (active: boolean) =>
     `rounded px-2 py-1 text-sm font-medium ${
@@ -55,15 +56,12 @@ function EditorToolbar({ editor }: { editor: TiptapEditor }) {
   );
 }
 
-/**
- * The editor "room" — /editor/:postId. Loads an existing post (draft or
- * published) and renders its editing surface. Reached two ways: from the
- * draft-on-open redirect (a brand-new draft) and directly when editing later.
- */
+// The editor room at /editor/:postId — loads a post and renders its editing surface.
 export default function Editor() {
   const { postId } = useParams();
   const queryClient = useQueryClient();
 
+  // Load the post, polling every 2s while any photo is still being processed.
   const {
     data: post,
     isLoading,
@@ -72,9 +70,6 @@ export default function Editor() {
     queryKey: ["post", postId],
     queryFn: () => getPost(postId!),
     enabled: Boolean(postId),
-    // Poll while any photo is still being processed by the worker, so its
-    // thumbnail appears automatically. Stop once every photo is settled
-    // (ready or error) — otherwise the frontend never learns the job finished.
     refetchInterval: (query) => {
       const unsettled = query.state.data?.photos.some(
         (p) => p.status === "pending" || p.status === "processing",
@@ -83,8 +78,7 @@ export default function Editor() {
     },
   });
 
-  // Seed the title once per post, keyed on id like the editor below — a poll
-  // refetch hands back a new post object and would otherwise overwrite typing.
+  // Seed the title once per post so a poll refetch can't overwrite in-progress typing.
   const [title, setTitle] = useState("");
   const seededPostId = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -94,43 +88,67 @@ export default function Editor() {
     }
   }, [post]);
 
-  // Deps on post?.id so the editor re-initializes with the right content when
-  // the post finishes loading (and if the route ever swaps to a different post).
+  // Dirty tracking: unsaved edits exist whenever revision has moved past savedRevision.
+  const [revision, setRevision] = useState(0);
+  const [savedRevision, setSavedRevision] = useState(0);
+  const markDirty = () => setRevision((r) => r + 1);
+
+  // Tiptap instance, re-created per post id; every content change marks the doc dirty.
   const editor = useEditor(
     {
       extensions: [StarterKit],
       content: post?.content as JSONContent | undefined,
+      onUpdate: markDirty,
     },
     [post?.id],
   );
 
-  const saveMutation = useMutation({
+  // PATCH title + body; the revision travels along so success records what was sent.
+  const { mutate: save, isPending: isSaving } = useMutation<Post, Error, number>({
     mutationFn: () => updatePost(postId!, { title, content: editor?.getJSON() }),
-    onSuccess: (updated) => queryClient.setQueryData(["post", postId], updated),
+    onSuccess: (updated, savedAt) => {
+      setSavedRevision(savedAt);
+      // Keep the cached photos — the response re-signs their URLs and would reload them.
+      queryClient.setQueryData(["post", postId], (prev: Post | undefined) =>
+        prev ? { ...prev, ...updated, photos: prev.photos } : updated,
+      );
+    },
   });
+
+  // Auto-save: the cleanup cancels the pending timer on each edit, debouncing to 2s idle.
+  useEffect(() => {
+    if (revision === savedRevision || isSaving) return;
+    const timer = setTimeout(() => save(revision), 2000);
+    return () => clearTimeout(timer);
+  }, [revision, savedRevision, isSaving, save]);
 
   if (isLoading) return <div className="text-zinc-500">Loading editor…</div>;
   if (isError || !post || !editor) return <div className="text-red-600">Could not load this post.</div>;
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Post title — plain state, so it has to mark itself dirty for auto-save. */}
       <input
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => {
+          setTitle(e.target.value);
+          markDirty();
+        }}
         placeholder="Untitled"
         className="w-full border-0 border-b border-zinc-200 bg-transparent pb-2 text-3xl font-bold text-zinc-950 focus:border-zinc-400 focus:outline-none"
       />
 
+      {/* Body: toolbar + manual save above the editable Tiptap surface. */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <EditorToolbar editor={editor} />
           <button
             type="button"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
+            onClick={() => save(revision)}
+            disabled={isSaving}
             className="rounded bg-zinc-900 px-3 py-1 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
           >
-            {saveMutation.isPending ? "Saving…" : "Save"}
+            {isSaving ? "Saving…" : "Save"}
           </button>
         </div>
         <EditorContent
@@ -139,7 +157,7 @@ export default function Editor() {
         />
       </div>
 
-      {/* Photo area: dropzone above one strip of saved photos + in-flight uploads. */}
+      {/* Dropzone above one strip of saved photos and in-flight uploads. */}
       <PhotoUploadZone postId={post.id} photos={post.photos} />
     </div>
   );

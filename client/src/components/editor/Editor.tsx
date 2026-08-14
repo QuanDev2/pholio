@@ -162,7 +162,7 @@ export default function Editor() {
             <button
               type="button"
               onClick={() => save(revision)}
-              disabled={isSaving}
+              disabled={isSaving || revision === savedRevision}
               className="rounded bg-zinc-900 px-3 py-1 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
             >
               Save
